@@ -1,0 +1,22 @@
+{
+  "id": "catch-em-all",
+  "name": "catch-EM-all",
+  "version": "1.0.0",
+  "api": 2,
+  "entry": "main.lua",
+  "games": [
+    "emerald"
+  ],
+  "profile": "content",
+  "description": "Made with Content editor tool help Every Gen 1-3 non-legendary catchable in themed wild tables.",
+  "category": "GAMEPLAY",
+  "priority": 200,
+  "permissions": [
+    "engine_internals"
+  ],
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "incompatible": [],
+  "experimental": false
+}

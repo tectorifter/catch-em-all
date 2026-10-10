@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Wild Spawns + Roamers Editor (Emerald)</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#151922; --panel2:#1b202c; --line:#2a3142;
+    --ink:#e8e6e3; --dim:#8b93a7; --accent:#e3350d; --accent2:#f2b01e;
+    --good:#4caf7d; --bad:#ef5350; --link:#7fb3ff;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:15px;line-height:1.5;text-align:left}
+  header{position:sticky;top:0;z-index:20;background:#10131acc;backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);padding:10px 12px;display:flex;gap:10px;align-items:center}
+  header h1{font-size:15px;margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  header h1 small{color:var(--dim);font-weight:400}
+  main{max-width:760px;margin:0 auto;padding:12px 12px 90px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+  .card h2{font-size:12px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
+  .hint{color:var(--dim);font-size:13px}
+  .hint code{background:var(--panel2);padding:1px 6px;border-radius:4px;color:var(--ink)}
+  label{display:block;font-size:13px;color:var(--dim);margin:10px 0 4px}
+  select,input[type=number],input[type=text]{width:100%;background:#0a0d12;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;padding:14px 12px;font-size:16px;font-family:inherit;min-height:52px}
+  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--accent2)}
+  textarea{width:100%;background:#0a0d12;color:var(--ink);border:1px solid var(--line);
+    border-radius:10px;padding:10px;font-size:13px;font-family:inherit;min-height:110px}
+  button{font-family:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);padding:14px 16px;font-size:16px;min-height:52px}
+  button:active{transform:scale(.98)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  button.good{background:#123f2b;border-color:var(--good);color:#c9f0da;font-weight:700}
+  button.ghost{background:transparent}
+  button.small{min-height:44px;padding:8px 12px;font-size:14px}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .btnrow button{flex:1;min-width:140px}
+  .tabs{display:flex;gap:8px;margin:4px 0 2px}
+  .tabs button{flex:1;font-weight:700}
+  .tabs button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pill{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:99px;
+    padding:4px 10px;color:var(--dim);margin:2px 4px 2px 0}
+  .pill.ok{color:var(--good);border-color:var(--good)}
+  .pill.bad{color:var(--bad);border-color:var(--bad)}
+  .area{border:1px solid var(--line);border-radius:10px;margin:12px 0;overflow:hidden}
+  .area>h3{margin:0;padding:10px 12px;background:var(--panel2);font-size:14px;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .ratewrap{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px dashed var(--line)}
+  .ratewrap label{margin:0;flex:1}
+  .ratewrap input{width:110px;flex:none}
+  .slot{display:grid;grid-template-columns:44px 1fr;gap:4px 10px;padding:10px 12px;border-top:1px solid var(--line)}
+  .slot .idx{color:var(--dim);font-size:13px;padding-top:14px}
+  .slot .odds{grid-column:2;color:var(--dim);font-size:12px;margin-top:-2px}
+  .slot .sp-field{grid-column:2}
+  .sp-field{width:100%;background:#0a0d12;color:var(--ink);border:1px solid var(--line);
+    border-radius:10px;padding:14px 12px;font-size:16px;font-family:inherit;min-height:52px;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;cursor:pointer}
+  .sp-field .car{color:var(--dim);flex:none}
+  .sp-field.custom{border-color:var(--accent2)}
+  .sp-field .sub{display:block;font-size:12px;color:var(--accent2)}
+  #spBackdrop{position:fixed;inset:0;background:#000a;z-index:50}
+  #spBackdrop[hidden], #spSheet[hidden]{display:none}
+  #spSheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:var(--panel);
+    border-top:1px solid var(--line);border-radius:16px 16px 0 0;max-width:560px;margin:0 auto;
+    display:flex;flex-direction:column;max-height:62vh;overflow:hidden}
+  #spHead{padding:10px 12px 2px}
+  #spSearch{width:100%;background:#0a0d12;color:var(--ink);border:1px solid var(--accent2);
+    border-radius:10px;padding:14px 12px;font-size:16px;font-family:inherit;min-height:52px}
+  #spCount{color:var(--dim);font-size:12px;padding:6px 12px 0}
+  #spList{overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:168px;padding:2px 12px 14px}
+  .sp-opt{display:block;min-height:52px;padding:12px;border:1px solid var(--line);
+    border-radius:10px;margin:6px 0;font-size:16px;background:var(--panel2);cursor:pointer;width:100%;
+    color:var(--ink);font-family:inherit;text-align:left}
+  .sp-opt.cur{border-color:var(--accent2)}
+  .sp-opt:active{transform:scale(.99)}
+  .lvlrow{grid-column:2;display:flex;gap:10px}
+  .lvlrow>div{flex:1}
+  .lvlrow label{margin:6px 0 4px}
+  .slot.dirty{background:#1c1607}
+  .checkrow{display:flex;align-items:center;gap:12px;background:#0a0d12;border:1px solid var(--line);
+    border-radius:10px;padding:12px;margin-top:10px;min-height:52px}
+  .checkrow input{width:28px;height:28px;flex:none;accent-color:var(--accent)}
+  .checkrow span{flex:1}
+  #changesList{font-size:13px;max-height:220px;overflow:auto;white-space:pre-wrap;color:var(--dim)}
+  #statusLine{font-size:13px;margin-top:8px;min-height:1.4em}
+  #statusLine.err{color:var(--bad)} #statusLine.ok{color:var(--good)}
+  .foot{color:#59647a;font-size:12px;text-align:center;margin-top:16px}
+  .err-text{color:var(--bad);font-size:13px}
+  .warn-text{color:var(--accent2);font-size:13px}
+  #areaBtns button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  #areaBtns button[aria-pressed=false]{opacity:.55}
+</style>
+</head>
+<body>
+<header>
+  <h1>Wild Spawns + Roamers <small>main.lua · wild tables + roamers</small></h1>
+</header>
+<main>
+  <div class="card">
+    <h2>1 &middot; Import main.lua</h2>
+    <div class="hint">Pick your <code>main.lua</code> (from the <code>emerald-wild-spawns</code> mod). The file never leaves your device. Export rewrites <b>only the values you change</b> &mdash; every other byte stays identical, so the mod contract and file structure survive.</div>
+    <div class="hint">Works with both <code>emerald-wild-spawns</code> and <code>catch-em-all</code> files — the latest catch structure auto-builds one in-game settings toggle per roamer row.</div>
+    <div class="btnrow">
+      <label for="fileInput" style="flex:1;margin:0"><button type="button" id="pickBtn" style="width:100%">&#128193; Choose main.lua</button></label>
+      <input type="file" id="fileInput" accept=".lua,text/plain" hidden>
+    </div>
+    <label for="pasteBox">…or paste the file text here</label>
+    <textarea id="pasteBox" placeholder="-- generated by tools/content-editor (Gen 3). …"></textarea>
+    <div class="btnrow"><button id="parsePasteBtn" type="button">Parse pasted text</button></div>
+    <div id="fileInfo" style="margin-top:10px"></div>
+    <div id="parseWarn"></div>
+  </div>
+
+  <div class="card" id="editCard" hidden>
+    <h2>2 &middot; Edit (one at a time)</h2>
+    <div class="tabs" role="tablist">
+      <button id="tabRoute" type="button" aria-pressed="true">Route / map</button>
+      <button id="tabRoamer" type="button" aria-pressed="false">Roamer</button>
+    </div>
+    <div id="routePane">
+      <label for="routeSel">Route / map (<span id="routeCount"></span>)</label>
+      <select id="routeSel"></select>
+      <div id="routeBody"></div>
+    </div>
+    <div id="roamerPane" hidden>
+      <label for="roamerSel">Roamer (<span id="roamerCount"></span>)</label>
+      <select id="roamerSel"></select>
+      <div id="roamerBody"></div>
+      <div class="btnrow">
+        <button id="addRoamerBtn" type="button" class="small">＋ Add roamer</button>
+        <button id="removeRoamerBtn" type="button" class="small ghost danger">Remove this roamer</button>
+      </div>
+      <div class="card" id="addForm" hidden style="margin:12px 0 0;background:var(--panel2)">
+        <h2>New roamer</h2>
+        <div class="hint">Adds <b>both</b> parts: the on/off switch and the roamer row.</div>
+        <div class="hint" id="addAutoNote"></div>
+        <label>Species</label>
+        <div id="addSpWrap"></div>
+        <div class="lvlrow" style="display:flex;gap:10px">
+          <div style="flex:1"><label for="addLvl">Level</label><input id="addLvl" type="number" min="1" max="100" step="1"></div>
+          <div style="flex:1"><label for="addChance">Chance %</label><input id="addChance" type="number" min="0" max="100" step="1"></div>
+        </div>
+        <label class="checkrow"><input id="addEnabled" type="checkbox" checked><span><b>Roams now</b><br><span class="hint">switch starts on</span></span></label>
+        <div class="btnrow"><button id="addConfirmBtn" type="button" class="primary small">Add roamer</button><button id="addCancelBtn" type="button" class="ghost small">Cancel</button></div>
+      </div>
+      <div class="card" style="margin:12px 0 0;background:var(--panel2)">
+        <h2>Global roamer defaults</h2>
+        <div class="hint">Rows showing <code>global</code> follow these. Editing a default retunes every roamer still on <code>global</code>.</div>
+        <div class="lvlrow" style="display:flex;gap:10px">
+          <div style="flex:1"><label for="globLvl">ROAMER_LEVEL</label><input id="globLvl" type="number" min="1" max="100" step="1"></div>
+          <div style="flex:1"><label for="globChance">ROAMER_CHANCE %</label><input id="globChance" type="number" min="0" max="100" step="1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="changesCard" hidden>
+    <h2>3 &middot; Pending changes <span id="chgCount" class="pill">0</span></h2>
+    <div id="changesList">No changes yet.</div>
+    <div class="hint">Changes apply the moment you leave a field — export always includes everything listed here. Nothing else to press.</div>
+    <div class="hint">Roam areas (<code>ROAM_MAPS</code> — shared by every roamer): tap to switch an area off/on.</div>
+    <div class="btnrow" id="areaBtns"></div>
+  </div>
+
+  <div class="card" id="exportCard" hidden>
+    <h2>4 &middot; Export</h2>
+    <div class="hint">Validates levels (1&ndash;100, min&le;max), rates and chances, then downloads a new <code>main.lua</code>. Drop it back into the mod folder (same name, same place).</div>
+    <div class="btnrow">
+      <button id="exportBtn" type="button" class="good">⬇ Download main.lua</button>
+      <button id="copyBtn" type="button">Copy to clipboard</button>
+    </div>
+    <div class="btnrow"><button id="showBtn" type="button" class="small ghost">Show file text (fallback)</button></div>
+    <div id="outWrap" hidden>
+      <label for="outBox">Full main.lua output — select all + copy it manually if download and copy fail on your device</label>
+      <textarea id="outBox" readonly style="min-height:220px"></textarea>
+      <div class="btnrow"><button id="selBtn" type="button" class="small">Select all</button></div>
+    </div>
+    <div id="statusLine"></div>
+  </div>
+
+  <div class="foot">Offline tool &middot; parses <code>encounters:patch</code> blocks + <code>ROAMER_*</code> config &middot; byte-preserving export</div>
+</main>
+
+<div id="spBackdrop" hidden></div>
+<div id="spSheet" hidden role="dialog" aria-label="Choose species">
+  <div id="spHead"><input id="spSearch" type="text" placeholder="Type to filter — e.g. pi" autocomplete="off" autocapitalize="characters" aria-label="Filter species"></div>
+  <div id="spCount"></div>
+  <div id="spList" role="listbox"></div>
+</div>
+
+<script>
+"use strict";
+/* Species list (from pokeemerald constants/species.h; EGG excluded). */
+var SPECIES = ["BULBASAUR","IVYSAUR","VENUSAUR","CHARMANDER","CHARMELEON","CHARIZARD","SQUIRTLE","WARTORTLE","BLASTOISE","CATERPIE","METAPOD","BUTTERFREE","WEEDLE","KAKUNA","BEEDRILL","PIDGEY","PIDGEOTTO","PIDGEOT","RATTATA","RATICATE","SPEAROW","FEAROW","EKANS","ARBOK","PIKACHU","RAICHU","SANDSHREW","SANDSLASH","NIDORAN_F","NIDORINA","NIDOQUEEN","NIDORAN_M","NIDORINO","NIDOKING","CLEFAIRY","CLEFABLE","VULPIX","NINETALES","JIGGLYPUFF","WIGGLYTUFF","ZUBAT","GOLBAT","ODDISH","GLOOM","VILEPLUME","PARAS","PARASECT","VENONAT","VENOMOTH","DIGLETT","DUGTRIO","MEOWTH","PERSIAN","PSYDUCK","GOLDUCK","MANKEY","PRIMEAPE","GROWLITHE","ARCANINE","POLIWAG","POLIWHIRL","POLIWRATH","ABRA","KADABRA","ALAKAZAM","MACHOP","MACHOKE","MACHAMP","BELLSPROUT","WEEPINBELL","VICTREEBEL","TENTACOOL","TENTACRUEL","GEODUDE","GRAVELER","GOLEM","PONYTA","RAPIDASH","SLOWPOKE","SLOWBRO","MAGNEMITE","MAGNETON","FARFETCHD","DODUO","DODRIO","SEEL","DEWGONG","GRIMER","MUK","SHELLDER","CLOYSTER","GASTLY","HAUNTER","GENGAR","ONIX","DROWZEE","HYPNO","KRABBY","KINGLER","VOLTORB","ELECTRODE","EXEGGCUTE","EXEGGUTOR","CUBONE","MAROWAK","HITMONLEE","HITMONCHAN","LICKITUNG","KOFFING","WEEZING","RHYHORN","RHYDON","CHANSEY","TANGELA","KANGASKHAN","HORSEA","SEADRA","GOLDEEN","SEAKING","STARYU","STARMIE","MR_MIME","SCYTHER","JYNX","ELECTABUZZ","MAGMAR","PINSIR","TAUROS","MAGIKARP","GYARADOS","LAPRAS","DITTO","EEVEE","VAPOREON","JOLTEON","FLAREON","PORYGON","OMANYTE","OMASTAR","KABUTO","KABUTOPS","AERODACTYL","SNORLAX","ARTICUNO","ZAPDOS","MOLTRES","DRATINI","DRAGONAIR","DRAGONITE","MEWTWO","MEW","CHIKORITA","BAYLEEF","MEGANIUM","CYNDAQUIL","QUILAVA","TYPHLOSION","TOTODILE","CROCONAW","FERALIGATR","SENTRET","FURRET","HOOTHOOT","NOCTOWL","LEDYBA","LEDIAN","SPINARAK","ARIADOS","CROBAT","CHINCHOU","LANTURN","PICHU","CLEFFA","IGGLYBUFF","TOGEPI","TOGETIC","NATU","XATU","MAREEP","FLAAFFY","AMPHAROS","BELLOSSOM","MARILL","AZUMARILL","SUDOWOODO","POLITOED","HOPPIP","SKIPLOOM","JUMPLUFF","AIPOM","SUNKERN","SUNFLORA","YANMA","WOOPER","QUAGSIRE","ESPEON","UMBREON","MURKROW","SLOWKING","MISDREAVUS","UNOWN","WOBBUFFET","GIRAFARIG","PINECO","FORRETRESS","DUNSPARCE","GLIGAR","STEELIX","SNUBBULL","GRANBULL","QWILFISH","SCIZOR","SHUCKLE","HERACROSS","SNEASEL","TEDDIURSA","URSARING","SLUGMA","MAGCARGO","SWINUB","PILOSWINE","CORSOLA","REMORAID","OCTILLERY","DELIBIRD","MANTINE","SKARMORY","HOUNDOUR","HOUNDOOM","KINGDRA","PHANPY","DONPHAN","PORYGON2","STANTLER","SMEARGLE","TYROGUE","HITMONTOP","SMOOCHUM","ELEKID","MAGBY","MILTANK","BLISSEY","RAIKOU","ENTEI","SUICUNE","LARVITAR","PUPITAR","TYRANITAR","LUGIA","HO_OH","CELEBI","TREECKO","GROVYLE","SCEPTILE","TORCHIC","COMBUSKEN","BLAZIKEN","MUDKIP","MARSHTOMP","SWAMPERT","POOCHYENA","MIGHTYENA","ZIGZAGOON","LINOONE","WURMPLE","SILCOON","BEAUTIFLY","CASCOON","DUSTOX","LOTAD","LOMBRE","LUDICOLO","SEEDOT","NUZLEAF","SHIFTRY","NINCADA","NINJASK","SHEDINJA","TAILLOW","SWELLOW","SHROOMISH","BRELOOM","SPINDA","WINGULL","PELIPPER","SURSKIT","MASQUERAIN","WAILMER","WAILORD","SKITTY","DELCATTY","KECLEON","BALTOY","CLAYDOL","NOSEPASS","TORKOAL","SABLEYE","BARBOACH","WHISCASH","LUVDISC","CORPHISH","CRAWDAUNT","FEEBAS","MILOTIC","CARVANHA","SHARPEDO","TRAPINCH","VIBRAVA","FLYGON","MAKUHITA","HARIYAMA","ELECTRIKE","MANECTRIC","NUMEL","CAMERUPT","SPHEAL","SEALEO","WALREIN","CACNEA","CACTURNE","SNORUNT","GLALIE","LUNATONE","SOLROCK","AZURILL","SPOINK","GRUMPIG","PLUSLE","MINUN","MAWILE","MEDITITE","MEDICHAM","SWABLU","ALTARIA","WYNAUT","DUSKULL","DUSCLOPS","ROSELIA","SLAKOTH","VIGOROTH","SLAKING","GULPIN","SWALOT","TROPIUS","WHISMUR","LOUDRED","EXPLOUD","CLAMPERL","HUNTAIL","GOREBYSS","ABSOL","SHUPPET","BANETTE","SEVIPER","ZANGOOSE","RELICANTH","ARON","LAIRON","AGGRON","CASTFORM","VOLBEAT","ILLUMISE","LILEEP","CRADILY","ANORITH","ARMALDO","RALTS","KIRLIA","GARDEVOIR","BAGON","SHELGON","SALAMENCE","BELDUM","METANG","METAGROSS","REGIROCK","REGICE","REGISTEEL","KYOGRE","GROUDON","RAYQUAZA","LATIAS","LATIOS","JIRACHI","DEOXYS","CHIMECHO"];
+
+/* Fixed per-slot encounter odds, vanilla Emerald (engine-fixed, not editable). */
+var LAND_W = [20,20,10,10,10,10,5,5,4,4,1,1];
+var SURF_W = [60,30,5,4,1];
+var OLD_W  = [70,30];
+var GOOD_W = [60,20,20];
+var SUPER_W= [40,30,15,10,5];
+var AREA_LABEL = {land:"Grass", water:"Surf", rocks:"Rock Smash", fishing:"Fishing"};
+
+var originalText = "", lines = [], lineOff = [];
+var roamerOnInfo = { entries: [], openLine: -1, closeLine: -1 };
+var lastRowEnd = 0, lastRowIndent = "    ";
+var routes = [], roamers = [];
+var roamAreas = { entries: [], openLine: -1, closeLine: -1, indent: "    " };
+var areaOff = {};
+var globLevel = null, globChance = null;   /* parsed global defaults + token spans */
+var parseWarnings = [];
+var autoToggles = false; /* latest catch structure: mod.options toggles auto-built from ROAMER_ROWS */
+var edits = {};
+var liveInputs = []; /* commit() of every number field on screen */
+function harvestInputs(){
+  /* Re-run each visible field's own commit so in-progress typing is applied.
+     Commits are idempotent (matching file values delete their edit). */
+  var list = liveInputs.slice();
+  for (var i=0;i<list.length;i++){ try { list[i].commit(); } catch(e){} }
+}
+function clearLive(tag){
+  liveInputs = liveInputs.filter(function(e){ return e.tag !== tag; });
+}
+function commitActiveField(){
+  /* Force the focused field to commit (fires its change), then harvest all. */
+  try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch(e){}
+  harvestInputs();
+}   /* key -> {label, apply:{start,end,text}} ; applied to originalText on export */
+var mode = "route", curRoute = -1, curRoamer = -1;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+/* Display-only route names: EM_ROUTE101 -> "Route 101",
+   EM_CAVE_OF_ORIGIN_1F -> "Cave Of Origin Floor 1",
+   EM_MAGMA_HIDEOUT_2F_1R -> "Magma Hideout Floor 2 Room 1".
+   File input/output always uses the full EM_ id. */
+function prettyRoute(id){
+  var parts = String(id).replace(/^EM_/, "").split("_");
+  var tail = [];
+  while (parts.length){
+    var t = parts[parts.length-1], m;
+    if ((m = /^(\d+)F$/.exec(t))) tail.unshift("Floor " + m[1]);
+    else if ((m = /^B(\d+)F$/.exec(t))) tail.unshift("Basement " + m[1]);
+    else if ((m = /^(\d+)R$/.exec(t))) tail.unshift("Room " + m[1]);
+    else break;
+    parts.pop();
+  }
+  var head = parts.map(function(w){
+    if (/^\d+$/.test(w)) return w;
+    var m = /^([A-Z]+)(\d+)$/.exec(w); /* ROUTE101 -> Route 101 */
+    if (m) return m[1].charAt(0) + m[1].slice(1).toLowerCase() + " " + m[2];
+    return w.charAt(0) + w.slice(1).toLowerCase();
+  }).join(" ");
+  return (head + (tail.length ? " " + tail.join(" ") : "")).trim();
+}
+
+/* ---------- parsing (records absolute char spans of every editable value) ---------- */
+function buildOffsets(){
+  lineOff = new Array(lines.length);
+  var o = 0;
+  for (var i=0;i<lines.length;i++){ lineOff[i]=o; o += lines[i].length+1; }
+}
+function spanOf(lineIdx, m, group){
+  /* m = regex match on lines[lineIdx]; group = captured group index */
+  var s = lineOff[lineIdx] + m.index;
+  var full = m[0], cap = m[group];
+  var start = s + full.indexOf(cap);
+  return {start:start, end:start+cap.length};
+}
+function parse(){
+  routes = []; roamers = []; parseWarnings = []; edits = {}; autoToggles = false;
+  buildOffsets();
+  var i, m, line;
+  /* --- encounter patch blocks --- */
+  var patchRe = /encounters:patch\("([^"]+)"/;
+  for (i=0;i<lines.length;i++){
+    m = patchRe.exec(lines[i]);
+    if(!m) continue;
+    var id = m[1], areas = [];
+    var j = i+1, cur = null;
+    for (; j<lines.length; j++){
+      line = lines[j];
+      var am = /^    (land|water|rocks|fishing) = \{$/.exec(line);
+      if (am){ cur = {key:am[1], rate:{v:0}, slots:[]}; areas.push(cur); continue; }
+      var rm = /^      rate = (\d+),?$/.exec(line);
+      if (rm && cur && !cur.rate.done){ cur.rate = {v:parseInt(rm[1],10), span:spanOf(j,rm,1), done:true}; continue; }
+      if (/^\s*\{ species = /.test(line)){
+        var sm = /species\s*=\s*"([^"]+)"\s*,\s*minLevel\s*=\s*(\d+)\s*,\s*maxLevel\s*=\s*(\d+)/.exec(line);
+        if (sm && cur){
+          /* locate each token span in order */
+          var base = lineOff[j], p0 = 0, s0 = line.indexOf('"'+sm[1]+'"', p0);
+          var p1 = line.indexOf(sm[2], s0), p2 = line.indexOf(sm[3], p1+sm[2].length);
+          cur.slots.push({species:sm[1],
+            min:parseInt(sm[2],10), max:parseInt(sm[3],10),
+            sp:{start:base+s0+1,end:base+s0+1+sm[1].length},
+            mn:{start:base+p1,end:base+p1+sm[2].length},
+            mx:{start:base+p2,end:base+p2+sm[3].length}});
+        } else if (cur){
+          parseWarnings.push("Kept as-is (not editable): "+id+" line "+(j+1));
+        }
+        continue;
+      }
+      if (/applyRecord\(\) end/.test(line)) break;
+    }
+    if (!areas.length) parseWarnings.push("No areas parsed in "+id+" — block kept as-is.");
+    routes.push({id:id, areas:areas});
+    i = j;
+  }
+  /* Comfortable order: numbered routes first (101, 102, …), then the rest A–Z. */
+  routes.sort(function(a,b){
+    var ma = /^EM_ROUTE(\d+)$/.exec(a.id), mb = /^EM_ROUTE(\d+)$/.exec(b.id);
+    if (ma && mb) return (+ma[1]) - (+mb[1]);
+    if (ma) return -1; if (mb) return 1;
+    var pa = prettyRoute(a.id), pb = prettyRoute(b.id);
+    return pa < pb ? -1 : pa > pb ? 1 : 0;
+  });
+  /* --- ROAMER_ON (ordered entries + block location, for add/remove) --- */
+  var onKeys = {}, k;
+  roamerOnInfo = { entries: [], openLine: -1, closeLine: -1 };
+  for (i=0;i<lines.length;i++){
+    if (/local ROAMER_ON = \{/.test(lines[i])){
+      roamerOnInfo.openLine = i;
+      for (var j2=i+1;j2<lines.length;j2++){
+        var lm = /([A-Z0-9_]+)\s*=\s*(true|false)/g, mm;
+        while ((mm = lm.exec(lines[j2]))) {
+          var ent = {key:mm[1], v:mm[2]==="true", span:spanOf(j2,mm,2), lineIdx:j2};
+          onKeys[mm[1]] = ent;
+          roamerOnInfo.entries.push(ent);
+        }
+        if (/^\s*\}/.test(lines[j2])) { roamerOnInfo.closeLine = j2; break; }
+      }
+      break;
+    }
+  }
+  /* --- ROAM_MAPS (shared roam areas, on/off buttons in Pending changes) --- */
+  roamAreas = { entries: [], openLine: -1, closeLine: -1, indent: "    " };
+  areaOff = {};
+  for (i=0;i<lines.length;i++){
+    if (/local ROAM_MAPS = \{/.test(lines[i])){
+      roamAreas.openLine = i;
+      for (var j3=i;j3<lines.length;j3++){
+        if (/^\s*\}/.test(lines[j3])){ roamAreas.closeLine = j3; break; }
+        var am = /"([^"]+)"/g, mm3;
+        if (!roamAreas.entries.length){
+          var im = /^(\s*)/.exec(lines[j3]);
+          if (im) roamAreas.indent = im[1];
+        }
+        while ((mm3 = am.exec(lines[j3]))) roamAreas.entries.push({id:mm3[1], lineIdx:j3});
+      }
+      break;
+    }
+  }
+  if (roamAreas.openLine < 0 || roamAreas.closeLine < 0)
+    parseWarnings.push("No ROAM_MAPS block found — area toggles unavailable.");
+  /* --- globals --- */
+  globLevel = globChance = null;
+  for (i=0;i<lines.length;i++){
+    var g1 = /local ROAMER_LEVEL = (\d+)/.exec(lines[i]);
+    if (g1) globLevel = {v:parseInt(g1[1],10), span:spanOf(i,g1,1)};
+    var g2 = /local ROAMER_CHANCE = (\d+)/.exec(lines[i]);
+    if (g2) globChance = {v:parseInt(g2[1],10), span:spanOf(i,g2,1)};
+  }
+  /* --- roamer install rows (full line spans, for add/remove) --- */
+  var rowRe = /\{ id = "([^"]+)", name = "([^"]+)", enabled = ROAMER_ON\.([A-Z0-9_]+), selection = "([^"]+)", species = "([^"]+)", level = ([^,\s]+), chance = ([^,\s]+),/;
+  lastRowEnd = 0; lastRowIndent = "    ";
+  for (i=0;i<lines.length;i++){
+    m = rowRe.exec(lines[i]);
+    if(!m) continue;
+    var base2 = lineOff[i], ln = lines[i];
+    var q = '"'+m[5]+'"', sIdx = ln.indexOf(q, m.index);
+    var lvlTok = m[6], chTok = m[7];
+    var lIdx = ln.indexOf("level = "+lvlTok, sIdx), cIdx = ln.indexOf("chance = "+chTok, lIdx);
+    var le = base2 + ln.length;
+    if (le > lastRowEnd){ lastRowEnd = le; lastRowIndent = (ln.match(/^\s*/) || [""])[0]; }
+    roamers.push({id:m[1], name:m[2], onKey:m[3], sel:m[4], species:m[5],
+      levelTok:lvlTok, chanceTok:chTok,
+      sp:{start:base2+sIdx+1,end:base2+sIdx+1+m[5].length},
+      lv:{start:base2+lIdx+8,end:base2+lIdx+8+lvlTok.length},
+      ch:{start:base2+cIdx+9,end:base2+cIdx+9+chTok.length},
+      rowLine:{start:base2,end:le},
+      on:onKeys[m[3]]||null});
+  }
+  /* --- auto-generated in-game toggles (latest catch structure) --- */
+  autoToggles = /for _, row in ipairs\(ROAMER_ROWS\) do/.test(originalText) &&
+    /optionRows\[#optionRows\+1\] = \{ key = "roam_" \.\. row\.id/.test(originalText);
+  if (roamers.length && !autoToggles)
+    parseWarnings.push("No auto-toggle settings block found — added/removed roamers won't change the in-game settings menu.");
+}
+
+/* ---------- edit registry ---------- */
+function setEdit(key, label, span, text){
+  edits[key] = {label:label, span:span, text:text};
+  renderChanges();
+}
+function delEdit(key){ if (edits[key]){ delete edits[key]; renderChanges(); } }
+function renderChanges(){
+  var ks = Object.keys(edits);
+  $("chgCount").textContent = ks.length;
+  $("changesList").textContent = ks.length ? ks.map(function(k){return "• "+edits[k].label;}).join("\n") : "No changes yet.";
+  var has = !!originalText;
+}
+
+/* ---------- curated species picker (Gen 1–3 only; contract-safe) ---------- */
+var CURATED_SET = {};
+SPECIES.forEach(function(s){ CURATED_SET[s]=1; });
+var spPickCb = null, spCurrent = null;
+function spMatches(q){
+  q = (q||"").toUpperCase().replace(/[^A-Z0-9_]/g,"");
+  if (!q) return SPECIES.slice();
+  var starts = [], rest = [];
+  for (var i=0;i<SPECIES.length;i++){
+    var s = SPECIES[i], at = s.indexOf(q);
+    if (at < 0) continue;
+    (at === 0 ? starts : rest).push(s);
+  }
+  return starts.concat(rest);
+}
+function spRenderList(){
+  var all = spMatches($("spSearch").value);
+  var m = all.slice(0, 300);
+  var box = $("spList"); box.innerHTML = "";
+  $("spCount").textContent = all.length + " match" + (all.length===1?"":"es") + (all.length>300 ? " (showing first 300 — keep typing)" : "");
+  if (!m.length){ box.innerHTML = '<p class="hint">No Gen 1–3 species matches.</p>'; return; }
+  m.forEach(function(s){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "sp-opt" + (s===spCurrent ? " cur" : "");
+    b.textContent = s; b.setAttribute("role","option");
+    b.setAttribute("aria-selected", s===spCurrent ? "true" : "false");
+    b.onclick = function(){ var cb = spPickCb; spClose(); if (cb) cb(s); };
+    box.appendChild(b);
+  });
+}
+function spOpen(current, onPick){
+  spCurrent = current; spPickCb = onPick;
+  $("spBackdrop").hidden = false; $("spSheet").hidden = false;
+  $("spSearch").value = "";
+  spRenderList();
+  try { $("spSearch").focus(); } catch(e){}
+}
+function spClose(){
+  $("spBackdrop").hidden = true; $("spSheet").hidden = true;
+  spPickCb = null;
+}
+/* Tap-to-open field: shows current species; only curated picks can be set. */
+function makeSpeciesField(current, ariaLabel, onPick, placeholder){
+  var b = document.createElement("button");
+  b.type = "button"; b.className = "sp-field";
+  b.setAttribute("aria-label", ariaLabel);
+  b._val = current;
+  b._paint = function(v){
+    b._val = v;
+    b.innerHTML = "";
+    var wrap = document.createElement("span");
+    var t = document.createElement("span");
+    t.textContent = v || placeholder || "Choose species…";
+    if (!v) t.style.color = "var(--dim)";
+    wrap.appendChild(t);
+    if (v && !CURATED_SET[v]){
+      var br = document.createElement("span"); br.className = "sub";
+      br.textContent = "custom value in file — tap to pick a Gen 1–3 species";
+      wrap.appendChild(br);
+      b.className = "sp-field custom";
+    } else { b.className = "sp-field"; }
+    b.appendChild(wrap);
+    var c = document.createElement("span"); c.className = "car"; c.textContent = "▾"; b.appendChild(c);
+  };
+  b._paint(current);
+  b.onclick = function(){ var self = b; spOpen(self._val, function(picked){ self._paint(picked); onPick(picked); }); };
+  return b;
+}
+
+/* ---------- slot odds (read-only, engine-fixed) ---------- */
+function slotOdds(key, idx, n){
+  if (key==="land" && n===12) return LAND_W[idx]+"%";
+  if ((key==="water"||key==="rocks") && n===5) return SURF_W[idx]+"%";
+  if (key==="fishing" && n===10){
+    if (idx<2) return "Old Rod "+OLD_W[idx]+"%";
+    if (idx<5) return "Good Rod "+GOOD_W[idx-2]+"%";
+    return "Super Rod "+SUPER_W[idx-5]+"%";
+  }
+  return "—";
+}
+
+/* ---------- route UI (exactly one route visible) ---------- */
+function renderRouteList(){
+  var s = $("routeSel"); s.innerHTML = "";
+  routes.forEach(function(r,i){
+    var n = r.areas.reduce(function(a,x){return a+x.slots.length;},0);
+    var o = document.createElement("option");
+    o.value = i; o.textContent = prettyRoute(r.id)+" ("+r.areas.length+" area"+(r.areas.length>1?"s":"")+", "+n+" mons)";
+    s.appendChild(o);
+  });
+  $("routeCount").textContent = routes.length;
+  if (curRoute<0 && routes.length) curRoute = 0;
+  s.value = curRoute;
+  renderRoute();
+}
+function renderRoute(){
+  clearLive("route");
+  var box = $("routeBody"); box.innerHTML = "";
+  var r = routes[curRoute];
+  if (!r){ box.innerHTML = '<p class="hint">No routes loaded.</p>'; return; }
+  r.areas.forEach(function(a,ai){
+    var div = document.createElement("div"); div.className = "area";
+    var h = document.createElement("h3");
+    h.innerHTML = "<span>"+esc(AREA_LABEL[a.key]||a.key)+"</span><span class='pill'>"+a.slots.length+" slots</span>";
+    div.appendChild(h);
+    var rw = document.createElement("div"); rw.className = "ratewrap";
+    rw.innerHTML = "<label>Encounter rate <span class='hint'>(vanilla 4–30; % per step feel)</span></label>";
+    var ri = document.createElement("input");
+    ri.type="number"; ri.min="0"; ri.max="255"; ri.step="1"; ri.value=a.rate.v;
+    ri.setAttribute("aria-label", r.id+" "+a.key+" rate");
+    ri.onchange = function(){
+      var v = Math.max(0,Math.min(255,Math.round(+ri.value||0)));
+      ri.value = v;
+      var key = "rate:"+r.id+":"+a.key;
+      if (v===a.rate.v) delEdit(key);
+      else setEdit(key, prettyRoute(r.id)+" ["+a.key+"] rate "+a.rate.v+" → "+v, a.rate.span, String(v));
+    };
+    liveInputs.push({commit: ri.onchange, tag:"route"});
+    /* reflect pending edit */
+    var rk = "rate:"+r.id+":"+a.key;
+    if (edits[rk]) ri.value = edits[rk].text;
+    rw.appendChild(ri); div.appendChild(rw);
+    a.slots.forEach(function(sl,si){
+      var d = document.createElement("div"); d.className = "slot";
+      var idx = document.createElement("div"); idx.className="idx"; idx.textContent = "#"+(si+1);
+      d.appendChild(idx);
+      var sk = "sp:"+r.id+":"+ai+":"+si;
+      var curSp = edits[sk] ? edits[sk].text : sl.species;
+      var field = makeSpeciesField(curSp, r.id+" slot "+(si+1)+" species", function(picked){
+        if (picked===sl.species) delEdit(sk);
+        else setEdit(sk, prettyRoute(r.id)+" #"+(si+1)+" "+sl.species+" → "+picked, sl.sp, picked);
+        d.classList.toggle("dirty", field._val!==sl.species || +mn.value!==sl.min || +mx.value!==sl.max);
+      });
+      d.appendChild(field);
+      var odds = document.createElement("div"); odds.className="odds";
+      odds.textContent = "slot odds ≈ "+slotOdds(a.key,si,a.slots.length)+" (fixed by engine)";
+      d.appendChild(odds);
+      var lr = document.createElement("div"); lr.className="lvlrow";
+      var mn=document.createElement("input"), mx=document.createElement("input");
+      mn.type=mx.type="number"; mn.min=mx.min="1"; mn.max=mx.max="100"; mn.step=mx.step="1";
+      mn.value=sl.min; mx.value=sl.max;
+      mn.setAttribute("aria-label", r.id+" slot "+(si+1)+" min level");
+      mx.setAttribute("aria-label", r.id+" slot "+(si+1)+" max level");
+      var mk="mn:"+r.id+":"+ai+":"+si, xk="mx:"+r.id+":"+ai+":"+si;
+      if (edits[mk]) mn.value=edits[mk].text;
+      if (edits[xk]) mx.value=edits[xk].text;
+      function lvlChanged(){
+        var v1=Math.max(1,Math.min(100,Math.round(+mn.value||1))), v2=Math.max(1,Math.min(100,Math.round(+mx.value||1)));
+        mn.value=v1; mx.value=v2;
+        if (v1===sl.min) delEdit(mk); else setEdit(mk, prettyRoute(r.id)+" #"+(si+1)+" ("+sl.species+") min Lv "+sl.min+" → "+v1, sl.mn, String(v1));
+        if (v2===sl.max) delEdit(xk); else setEdit(xk, prettyRoute(r.id)+" #"+(si+1)+" ("+sl.species+") max Lv "+sl.max+" → "+v2, sl.mx, String(v2));
+        d.classList.toggle("dirty", field._val!==sl.species || v1!==sl.min || v2!==sl.max);
+      }
+      mn.onchange=lvlChanged; mx.onchange=lvlChanged;
+      liveInputs.push({commit:lvlChanged, tag:"route"});
+      var w1=document.createElement("div"), w2=document.createElement("div");
+      var l1=document.createElement("label"); l1.textContent="Min Lv"; w1.appendChild(l1); w1.appendChild(mn);
+      var l2=document.createElement("label"); l2.textContent="Max Lv"; w2.appendChild(l2); w2.appendChild(mx);
+      lr.appendChild(w1); lr.appendChild(w2); d.appendChild(lr);
+      if (edits[sk]||edits[mk]||edits[xk]) d.classList.add("dirty");
+      div.appendChild(d);
+    });
+    box.appendChild(div);
+  });
+}
+
+/* ---------- roamer UI (exactly one roamer visible) ---------- */
+function effLevel(rm){ return /^\d+$/.test(rm.levelTok) ? {v:parseInt(rm.levelTok,10), global:false} : {v:globLevel?globLevel.v:70, global:true}; }
+function effChance(rm){ return /^\d+$/.test(rm.chanceTok) ? {v:parseInt(rm.chanceTok,10), global:false} : {v:globChance?globChance.v:25, global:true}; }
+function renderRoamerList(){
+  var s = $("roamerSel"); s.innerHTML = "";
+  roamers.forEach(function(r,i){
+    var o = document.createElement("option");
+    o.value=i; o.textContent=r.name+" ("+r.species+")";
+    s.appendChild(o);
+  });
+  $("roamerCount").textContent = roamers.length;
+  if (curRoamer<0 && roamers.length) curRoamer = 0;
+  s.value = curRoamer;
+  if (globLevel) $("globLvl").value = edits["globLvl"] ? edits["globLvl"].text : globLevel.v;
+  if (globChance) $("globChance").value = edits["globChance"] ? edits["globChance"].text : globChance.v;
+  renderRoamer();
+}
+function renderRoamer(){
+  clearLive("roamer");
+  var box = $("roamerBody"); box.innerHTML = "";
+  var rm = roamers[curRoamer];
+  if (!rm){ box.innerHTML = '<p class="hint">No roamers found in this file.</p>'; return; }
+  var lv = effLevel(rm), ch = effChance(rm);
+  var pills = document.createElement("div");
+  pills.innerHTML = '<span class="pill">'+esc(rm.id)+'</span>'+
+    '<span class="pill">roam_'+esc(rm.id)+'</span>'+
+    '<span class="pill">'+(rm.on&&rm.on.v?"enabled":"DISABLED")+'</span>'+
+    '<span class="pill">Lv '+(edits["rlv:"+rm.id]?edits["rlv:"+rm.id].text:lv.v)+(edits["rlv:"+rm.id]?"":" ("+(lv.global?"global":"own")+")")+'</span>'+
+    '<span class="pill">'+(edits["rch:"+rm.id]?edits["rch:"+rm.id].text:ch.v)+'%'+(edits["rch:"+rm.id]?"":" ("+(ch.global?"global":"own")+")")+'</span>';
+  box.appendChild(pills);
+
+  var ck = document.createElement("label"); ck.className="checkrow";
+  var cb = document.createElement("input"); cb.type="checkbox";
+  var onV = edits["ron:"+rm.id] ? edits["ron:"+rm.id].text==="true" : (rm.on?rm.on.v:true);
+  cb.checked = onV;
+  var csp = document.createElement("span");
+  csp.innerHTML = "<b>Roams Hoenn</b><br><span class='hint'>"+(rm.on?("switch <code>ROAMER_ON."+esc(rm.onKey)+"</code>"):"no switch link — kept as-is")+"</span>";
+  ck.appendChild(cb); ck.appendChild(csp); box.appendChild(ck);
+  cb.onchange = function(){
+    var key="ron:"+rm.id;
+    if (!rm.on){ status("No ROAMER_ON switch for "+rm.id+" — toggle not exported.", true); cb.checked=!cb.checked; return; }
+    if ((cb.checked?"true":"false")===(rm.on.v?"true":"false")) delEdit(key);
+    else setEdit(key, rm.name+" enabled → "+(cb.checked?"true":"false"), rm.on.span, cb.checked?"true":"false");
+    renderRoamer();
+  };
+
+  var l1=document.createElement("label"); l1.textContent="Species"; l1.setAttribute("for","rmSp");
+  var rsk = "rsp:"+rm.id;
+  var rfield = makeSpeciesField(edits[rsk]?edits[rsk].text:rm.species, rm.name+" species", function(picked){
+    if (picked===rm.species) delEdit(rsk);
+    else setEdit(rsk, rm.name+" species "+rm.species+" → "+picked, rm.sp, picked);
+  });
+  rfield.id = "rmSp";
+  box.appendChild(l1); box.appendChild(rfield);
+
+  var lr=document.createElement("div"); lr.style.display="flex"; lr.style.gap="10px";
+  var w1=document.createElement("div"); w1.style.flex="1";
+  var ll=document.createElement("label"); ll.textContent="Level"; w1.appendChild(ll);
+  var li=document.createElement("input"); li.type="number"; li.min="1"; li.max="100"; li.step="1";
+  li.value = edits["rlv:"+rm.id]?edits["rlv:"+rm.id].text:lv.v;
+  li.setAttribute("aria-label", rm.name+" level");
+  li.placeholder = lv.global ? ("global ("+lv.v+")") : "";
+  li.onchange=function(){
+    var v=Math.max(1,Math.min(100,Math.round(+li.value||1))); li.value=v;
+    var key="rlv:"+rm.id;
+    if (String(v)===rm.levelTok) delEdit(key);
+    else setEdit(key, rm.name+" level "+rm.levelTok+" → "+v, rm.lv, String(v));
+  };
+  liveInputs.push({commit: li.onchange, tag:"roamer"});
+  w1.appendChild(li);
+  var w2=document.createElement("div"); w2.style.flex="1";
+  var lc=document.createElement("label"); lc.textContent="Chance %"; w2.appendChild(lc);
+  var ci=document.createElement("input"); ci.type="number"; ci.min="0"; ci.max="100"; ci.step="1";
+  ci.value = edits["rch:"+rm.id]?edits["rch:"+rm.id].text:ch.v;
+  ci.setAttribute("aria-label", rm.name+" chance percent");
+  ci.placeholder = ch.global ? ("global ("+ch.v+")") : "";
+  ci.onchange=function(){
+    var v=Math.max(0,Math.min(100,Math.round(+ci.value||0))); ci.value=v;
+    var key="rch:"+rm.id;
+    if (String(v)===rm.chanceTok) delEdit(key);
+    else setEdit(key, rm.name+" chance "+rm.chanceTok+" → "+v+"%", rm.ch, String(v));
+  };
+  liveInputs.push({commit: ci.onchange, tag:"roamer"});
+  /* fix: span field name */
+  w2.appendChild(ci); lr.appendChild(w1); lr.appendChild(w2); box.appendChild(lr);
+  var h=document.createElement("p"); h.className="hint";
+  h.textContent = "Level/chance edits are written into this roamer's own row only. Other roamers on “global” are untouched.";
+  box.appendChild(h);
+  var t2=document.createElement("p"); t2.className="hint";
+  t2.textContent = autoToggles
+    ? "In-game toggle auto-built from this row (settings key roam_"+rm.id+"). A player's saved choice beats the file default."
+    : "This file has no auto-toggle block: adding/removing roamers won't change the in-game settings menu.";
+  box.appendChild(t2);
+}
+
+/* ---------- roam areas (shared ROAM_MAPS, on/off buttons) ---------- */
+function areaOnIds(){
+  return roamAreas.entries.map(function(e){return e.id;}).filter(function(id){return !areaOff[id];});
+}
+function areaBlockSpan(){
+  return {start: lineOff[roamAreas.openLine] + lines[roamAreas.openLine].length + 1,
+    end: lineOff[roamAreas.closeLine]};
+}
+function syncAreaEdit(){
+  var on = areaOnIds();
+  if (on.length === roamAreas.entries.length){ delEdit("areas"); return; }
+  var mid = on.map(function(id){return roamAreas.indent + '"' + id + '",';}).join("\n");
+  if (mid) mid += "\n";
+  var off = roamAreas.entries.map(function(e){return e.id;}).filter(function(id){return areaOff[id];});
+  setEdit("areas", "Roam areas off: " + off.join(", ") + " (" + on.length + "/" + roamAreas.entries.length + " on)", areaBlockSpan(), mid);
+}
+function toggleArea(id){
+  if (!roamAreas.entries.length) return;
+  if (areaOff[id]) delete areaOff[id];
+  else {
+    if (areaOnIds().length <= 1){ status("Keep at least one roam area on.", true); return; }
+    areaOff[id] = true;
+  }
+  syncAreaEdit();
+  renderAreas();
+}
+function renderAreas(){
+  var box = $("areaBtns"); box.innerHTML = "";
+  if (!roamAreas.entries.length){
+    box.innerHTML = '<span class="hint">No roam areas in this file.</span>';
+    return;
+  }
+  roamAreas.entries.forEach(function(e){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "small";
+    b.setAttribute("aria-pressed", areaOff[e.id] ? "false" : "true");
+    b.textContent = (areaOff[e.id] ? "○ " : "● ") + prettyRoute(e.id);
+    b.title = e.id;
+    b.onclick = (function(mid){ return function(){ toggleArea(mid); }; })(e.id);
+    box.appendChild(b);
+  });
+}
+
+/* ---------- import ---------- */
+function loadText(text, name){
+  originalText = text.replace(/\r\n?/g,"\n");
+  lines = originalText.split("\n");
+  parse();
+  curRoute = routes.length?0:-1; curRoamer = roamers.length?0:-1;
+  var info = [];
+  info.push('<span class="pill ok">'+esc(name||"pasted text")+'</span>');
+  info.push('<span class="pill">'+originalText.split("\n").length+' lines</span>');
+  info.push('<span class="pill">'+routes.length+' routes</span>');
+  info.push('<span class="pill">'+roamers.length+' roamers</span>');
+  if (globLevel) info.push('<span class="pill">Lv '+globLevel.v+'</span>');
+  if (globChance) info.push('<span class="pill">'+globChance.v+'%</span>');
+  if (roamers.length) info.push(autoToggles
+    ? '<span class="pill ok">auto in-game toggles</span>'
+    : '<span class="pill">static roamer list</span>');
+  if (roamAreas.entries.length) info.push('<span class="pill">'+roamAreas.entries.length+' areas</span>');
+  $("fileInfo").innerHTML = info.join(" ");
+  $("parseWarn").innerHTML = parseWarnings.length
+    ? '<p class="warn-text">'+esc(parseWarnings.slice(0,8).join(" | "))+(parseWarnings.length>8?" … (+"+(parseWarnings.length-8)+" more)":"")+'</p>' : "";
+  if (!routes.length && !roamers.length){
+    status("Could not find encounter blocks or roamer rows — is this the right main.lua?", true);
+    return;
+  }
+  $("editCard").hidden = false; $("changesCard").hidden = false; $("exportCard").hidden = false;
+  renderRouteList(); renderRoamerList(); renderAreas(); renderChanges();
+  status("Loaded — pick a route or roamer to edit.", false, true);
+}
+var lastOutput = null;
+function showOutput(out){
+  lastOutput = out;
+  $("outBox").value = out;
+  $("outWrap").hidden = false;
+}
+function status(msg, isErr, isOk){
+  var s = $("statusLine");
+  s.textContent = msg; s.className = isErr?"err":(isOk?"ok":"");
+}
+
+/* ---------- export (surgical, byte-preserving) ---------- */
+function validate(){
+  var errs = [];
+  Object.keys(edits).forEach(function(k){
+    var e = edits[k];
+    if (/^(mn|mx):/.test(k)){
+      var v = +e.text;
+      if (!(v>=1&&v<=100)) errs.push(e.label+" — level must be 1–100.");
+    }
+    if (/^rate:/.test(k)){ var r=+e.text; if(!(r>=0&&r<=255)) errs.push(e.label+" — rate must be 0–255."); }
+    if (/^rch:/.test(k)||k==="globChance"){ var c=+e.text; if(!(c>=0&&c<=100)) errs.push(e.label+" — chance must be 0–100."); }
+    if (/^rlv:/.test(k)||k==="globLvl"){ var l=+e.text; if(!(l>=1&&l<=100)) errs.push(e.label+" — level must be 1–100."); }
+    if (k==="areas" && areaOnIds().length<1) errs.push("Roam areas — keep at least one area on.");
+    if (/^(sp|rsp):/.test(k)){ if(!CURATED_SET[e.text]) errs.push(e.label+" — not a Gen 1–3 species."); }
+  });
+  /* min<=max per slot (considering pending edits) */
+  routes.forEach(function(r){
+    r.areas.forEach(function(a,ai){
+      a.slots.forEach(function(sl,si){
+        var mn = edits["mn:"+r.id+":"+ai+":"+si]?+edits["mn:"+r.id+":"+ai+":"+si].text:sl.min;
+        var mx = edits["mx:"+r.id+":"+ai+":"+si]?+edits["mx:"+r.id+":"+ai+":"+si].text:sl.max;
+        if (mn>mx) errs.push(prettyRoute(r.id)+" #"+(si+1)+": min Lv "+mn+" > max Lv "+mx+".");
+      });
+    });
+  });
+  return errs;
+}
+function buildOutput(){
+  var reps = Object.keys(edits).map(function(k){return edits[k];});
+  reps.sort(function(a,b){return b.span.start-a.span.start;});
+  var out = originalText;
+  reps.forEach(function(e){ out = out.slice(0,e.span.start)+e.text+out.slice(e.span.end); });
+  return out;
+}
+function doExport(){
+  commitActiveField();
+  var errs = validate();
+  if (errs.length){ status("Fix before export: "+errs[0]+(errs.length>1?" (+"+(errs.length-1)+" more)":""), true); return null; }
+  var out = buildOutput();
+  var changed = 0, a = originalText, b = out, n = Math.min(a.length,b.length);
+  for (var i=0;i<n;i++) if (a[i]!==b[i]) changed++;
+  changed += Math.abs(a.length-b.length);
+  var blob = new Blob([out], {type:"text/x-lua;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement("a");
+  link.href = url; link.download = "main.lua";
+  document.body.appendChild(link);
+  var dlOk = true;
+  try { link.click(); } catch(e){ dlOk = false; }
+  setTimeout(function(){ URL.revokeObjectURL(url); link.remove(); }, 800);
+  lastOutput = out;
+  if (dlOk) status("Download started — "+Object.keys(edits).length+" values changed. Replace the mod's main.lua with the file. No file arrived? Use Copy or Show file text below.", false, true);
+  else { showOutput(out); status("Download blocked on this device — file text shown below, copy it manually.", true); }
+  return out;
+}
+
+/* ---------- add / remove roamers (switch + row kept in sync) ---------- */
+function prettySpeciesName(sp){
+  return String(sp).split("_").map(function(w){
+    if (/^\d+$/.test(w)) return w;
+    return w.charAt(0) + w.slice(1).toLowerCase();
+  }).join(sp.indexOf("_") < 0 ? "" : "-");
+}
+/* Bake pending value-edits into the working text so structural surgery uses fresh offsets. */
+function bakeEdits(){
+  var n = Object.keys(edits).length;
+  if (n){ originalText = buildOutput(); edits = {}; }
+  lines = originalText.split("\n");
+  parse();
+  return n;
+}
+function reparseAndRender(selId){
+  lines = originalText.split("\n");
+  parse();
+  if (curRoute >= routes.length) curRoute = routes.length - 1;
+  if (curRoute < 0 && routes.length) curRoute = 0;
+  if (selId){ var i = roamers.findIndex(function(r){return r.id===selId;}); curRoamer = i >= 0 ? i : 0; }
+  else {
+    if (curRoamer >= roamers.length) curRoamer = roamers.length - 1;
+    if (curRoamer < 0 && roamers.length) curRoamer = 0;
+  }
+  renderRouteList(); renderRoamerList(); renderAreas(); renderChanges();
+  disarmRemove();
+}
+function doAddRoamer(spec){
+  var sp = spec.species;
+  if (!sp || !CURATED_SET[sp]){ status("Pick a species for the new roamer first.", true); return false; }
+  var key = sp, id = "hoenn_" + sp.toLowerCase();
+  if (roamers.some(function(r){return r.id===id || r.species===sp;})){ status(sp + " is already a roamer.", true); return false; }
+  if (roamerOnInfo.entries.some(function(e){return e.key===key;})){ status("Switch ROAMER_ON." + key + " already exists.", true); return false; }
+  if (!lastRowEnd){ status("No roamer rows found — add aborted.", true); return false; }
+  var lvl = Math.max(1, Math.min(100, Math.round(+spec.level || (globLevel ? globLevel.v : 70))));
+  var ch = Math.max(0, Math.min(100, Math.round(+spec.chance || 0)));
+  var lvlTok = (globLevel && lvl === globLevel.v) ? "ROAMER_LEVEL" : String(lvl);
+  var chTok = (globChance && ch === globChance.v) ? "ROAMER_CHANCE" : String(ch);
+  var baked = bakeEdits();
+  /* 1. switch entry */
+  var ents = roamerOnInfo.entries;
+  if (ents.length){
+    var last = ents[ents.length - 1];
+    var mc = /^\s*,/.exec(originalText.slice(last.span.end));
+    var pos, txt;
+    if (mc){ pos = last.span.end + mc[0].length; txt = "\n    " + key + " = " + (spec.enabled ? "true" : "false") + ","; }
+    else { pos = last.span.end; txt = ",\n    " + key + " = " + (spec.enabled ? "true" : "false"); }
+    originalText = originalText.slice(0, pos) + txt + originalText.slice(pos);
+  } else if (roamerOnInfo.closeLine >= 0){
+    var co = lineOff[roamerOnInfo.closeLine];
+    originalText = originalText.slice(0, co) + "    " + key + " = " + (spec.enabled ? "true" : "false") + "\n" + originalText.slice(co);
+  } else { status("ROAMER_ON table not found — add aborted.", true); return false; }
+  /* 2. install row after the last row (reparse first: the switch insert moved lines) */
+  lines = originalText.split("\n"); parse();
+  var row = lastRowIndent + '{ id = "' + id + '", name = "Roaming ' + prettySpeciesName(sp) +
+    '", enabled = ROAMER_ON.' + key + ', selection = "fixed", species = "' + sp +
+    '", level = ' + lvlTok + ', chance = ' + chTok +
+    ', unlock = "always", flee = "fight", defeat = "return", maps = ROAM_MAPS },';
+  originalText = originalText.slice(0, lastRowEnd) + "\n" + row + originalText.slice(lastRowEnd);
+  reparseAndRender(id);
+  status("Added Roaming " + prettySpeciesName(sp) + " (switch + row)" + (baked ? " — " + baked + " pending edit(s) applied first." : "."), false, true);
+  return true;
+}
+function doRemoveRoamerById(id){
+  var rm = null;
+  for (var k = 0; k < roamers.length; k++) if (roamers[k].id === id) rm = roamers[k];
+  if (!rm){ status("Roamer not found.", true); return false; }
+  var baked = bakeEdits();
+  /* bake rebuilt the text + offsets, so re-find the row (the pre-bake object is stale). */
+  rm = null;
+  for (var k2 = 0; k2 < roamers.length; k2++) if (roamers[k2].id === id) rm = roamers[k2];
+  if (!rm){ status("Roamer vanished while applying pending edits — nothing removed.", true); return false; }
+  /* 1. delete the install row's whole line */
+  var ls = rm.rowLine.start, le = rm.rowLine.end;
+  if (originalText[le] === "\n") originalText = originalText.slice(0, ls) + originalText.slice(le + 1);
+  else if (ls > 0 && originalText[ls - 1] === "\n") originalText = originalText.slice(0, ls - 1) + originalText.slice(le);
+  else originalText = originalText.slice(0, ls) + originalText.slice(le);
+  lines = originalText.split("\n"); parse();
+  /* 2. delete the switch entry, unless another row still uses the key */
+  var shared = roamers.some(function(r){ return r.onKey === rm.onKey; });
+  var switchGone = false;
+  if (!shared){
+    var ent = null;
+    for (var j = 0; j < roamerOnInfo.entries.length; j++) if (roamerOnInfo.entries[j].key === rm.onKey) ent = roamerOnInfo.entries[j];
+    if (ent){
+      var li = ent.lineIdx, line = lines[li];
+      var solo = new RegExp("^\\s*" + rm.onKey + "\\s*=\\s*(?:true|false),?\\s*$");
+      if (solo.test(line)){ lines.splice(li, 1); }
+      else {
+        var nl = line.replace(new RegExp(",\\s*" + rm.onKey + "\\s*=\\s*(?:true|false)"), "");
+        if (nl === line) nl = line.replace(new RegExp(rm.onKey + "\\s*=\\s*(?:true|false)\\s*,\\s*"), "");
+        if (nl === line) nl = line.replace(new RegExp(rm.onKey + "\\s*=\\s*(?:true|false)"), "");
+        lines[li] = nl;
+      }
+      originalText = lines.join("\n");
+      lines = originalText.split("\n"); parse();
+      switchGone = true;
+    }
+  }
+  reparseAndRender(null);
+  status("Removed " + rm.name + " (row" + (switchGone ? " + switch" : shared ? " — switch kept, still used by another row" : " — switch not found") + ")" +
+    (baked ? " — " + baked + " pending edit(s) applied first." : "."), false, true);
+  return true;
+}
+
+/* ---------- wiring ---------- */
+$("pickBtn").onclick = function(){ $("fileInput").click(); };
+$("fileInput").onchange = function(){
+  var f = $("fileInput").files[0]; if(!f) return;
+  var r = new FileReader();
+  r.onload = function(){ loadText(String(r.result||""), f.name); };
+  r.readAsText(f);
+};
+$("parsePasteBtn").onclick = function(){
+  var t = $("pasteBox").value;
+  if (!t.trim()){ status("Paste the main.lua text first.", true); return; }
+  loadText(t, "pasted text");
+};
+$("routeSel").onchange = function(){ curRoute = +$("routeSel").value; renderRoute(); };
+$("roamerSel").onchange = function(){ curRoamer = +$("roamerSel").value; disarmRemove(); renderRoamer(); };
+/* add / remove roamer UI */
+var addSpecies = "";
+var removeArmed = null, removeTimer = 0;
+function paintAddField(){
+  var w = $("addSpWrap"); w.innerHTML = "";
+  w.appendChild(makeSpeciesField(addSpecies, "New roamer species", function(p){ addSpecies = p; paintAddField(); }, "Tap to choose species…"));
+}
+function disarmRemove(){
+  removeArmed = null;
+  if (typeof clearTimeout === "function") clearTimeout(removeTimer);
+  var b = $("removeRoamerBtn");
+  if (b && b.textContent !== "Remove this roamer") b.textContent = "Remove this roamer";
+}
+$("addRoamerBtn").onclick = function(){
+  var f = $("addForm");
+  f.hidden = !f.hidden;
+  if (!f.hidden){
+    $("addLvl").value = globLevel ? globLevel.v : 70;
+    $("addChance").value = globChance ? globChance.v : 25;
+    $("addEnabled").checked = true;
+    addSpecies = "";
+    paintAddField();
+    $("addAutoNote").textContent = autoToggles
+      ? "The in-game settings toggle for the new roamer appears automatically."
+      : "Note: this file has no auto-toggle block, so the settings menu won't gain a toggle.";
+  }
+};
+$("addCancelBtn").onclick = function(){ $("addForm").hidden = true; };
+$("addConfirmBtn").onclick = function(){
+  if (doAddRoamer({species:addSpecies, level:$("addLvl").value, chance:$("addChance").value, enabled:$("addEnabled").checked}))
+    $("addForm").hidden = true;
+};
+$("removeRoamerBtn").onclick = function(){
+  var rm = roamers[curRoamer];
+  if (!rm){ status("No roamer selected.", true); return; }
+  if (removeArmed !== rm.id){
+    removeArmed = rm.id;
+    $("removeRoamerBtn").textContent = "Tap again to remove " + rm.name + "?";
+    clearTimeout(removeTimer);
+    removeTimer = setTimeout(disarmRemove, 4000);
+    return;
+  }
+  disarmRemove();
+  doRemoveRoamerById(rm.id);
+};
+$("tabRoute").onclick = function(){
+  mode="route"; $("tabRoute").setAttribute("aria-pressed","true"); $("tabRoamer").setAttribute("aria-pressed","false");
+  $("routePane").hidden=false; $("roamerPane").hidden=true;
+};
+$("tabRoamer").onclick = function(){
+  mode="roamer"; $("tabRoamer").setAttribute("aria-pressed","true"); $("tabRoute").setAttribute("aria-pressed","false");
+  $("routePane").hidden=true; $("roamerPane").hidden=false;
+};
+
+
+$("globLvl").onchange = function(){
+  if (!globLevel) return;
+  var v=Math.max(1,Math.min(100,Math.round(+$("globLvl").value||1))); $("globLvl").value=v;
+  if (v===globLevel.v) delEdit("globLvl");
+  else setEdit("globLvl","Global ROAMER_LEVEL "+globLevel.v+" → "+v, globLevel.span, String(v));
+};
+liveInputs.push({commit: function(){ $("globLvl").onchange(); }, tag:"global"});
+$("globChance").onchange = function(){
+  if (!globChance) return;
+  var v=Math.max(0,Math.min(100,Math.round(+$("globChance").value||0))); $("globChance").value=v;
+  if (v===globChance.v) delEdit("globChance");
+  else setEdit("globChance","Global ROAMER_CHANCE "+globChance.v+" → "+v+"%", globChance.span, String(v));
+};
+liveInputs.push({commit: function(){ $("globChance").onchange(); }, tag:"global"});
+$("exportBtn").onclick = doExport;
+$("showBtn").onclick = function(){
+  commitActiveField();
+  var errs = validate();
+  if (errs.length){ status("Fix before export: "+errs[0], true); return; }
+  showOutput(buildOutput());
+  status("File text shown below — select all + copy it into main.lua manually.", false, true);
+};
+$("selBtn").onclick = function(){
+  var b = $("outBox");
+  b.focus();
+  try { b.select(); b.setSelectionRange(0, b.value.length); } catch(e){ try { b.select(); } catch(e2){} }
+};
+$("spSearch").oninput = spRenderList;
+$("spBackdrop").onclick = spClose;
+if (document.addEventListener) document.addEventListener("keydown", function(e){
+  if (e.key === "Escape" && !$("spSheet").hidden) spClose();
+});
+$("copyBtn").onclick = function(){
+  commitActiveField();
+  var errs = validate();
+  if (errs.length){ status("Fix before copy: "+errs[0], true); return; }
+  var out = buildOutput();
+  function done(){ status("Copied — paste over the mod's main.lua and save.", false, true); }
+  function legacy(){
+    var ta = document.createElement("textarea");
+    ta.value = out; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus();
+    try { ta.select(); ta.setSelectionRange(0, ta.value.length); } catch(e){}
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch(e2){}
+    ta.remove();
+    if (ok) done();
+    else { showOutput(out); status("Copy blocked — file text shown below, copy it manually.", true); }
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(out).then(done, legacy);
+  else legacy();
+};
+/* expose for automated tests */
+window.__editor = {loadText:loadText, buildOutput:buildOutput, validate:validate,
+  testEdit:function(k,l,s,t){setEdit(k,l,s,t);},
+  addRoamer:doAddRoamer, removeRoamer:doRemoveRoamerById,
+  filter:spMatches, speciesCount:function(){return SPECIES.length;}, pretty:prettyRoute,
+  getRoutes:function(){return routes;}, getRoamers:function(){return roamers;}, getEdits:function(){return edits;},
+  getGlobals:function(){return {level:globLevel, chance:globChance};},
+  hasAutoToggles:function(){return autoToggles;},
+  lastOutput:function(){return lastOutput;},
+  harvest:harvestInputs};
+</script>
+</body>
+</html>
