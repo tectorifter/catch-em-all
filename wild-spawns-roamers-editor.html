@@ -94,6 +94,10 @@
   .warn-text{color:var(--accent2);font-size:13px}
   #areaBtns button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
   #areaBtns button[aria-pressed=false]{opacity:.55}
+  /* Roam-area buttons: exactly two rows visible, scroll the rest (touch + mouse wheel). */
+  #areaBtns{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;
+    max-height:118px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px}
+  #areaBtns button{min-width:0;margin:0}
 </style>
 </head>
 <body>
@@ -126,6 +130,22 @@
       <label for="routeSel">Route / map (<span id="routeCount"></span>)</label>
       <select id="routeSel"></select>
       <div id="routeBody"></div>
+      <div class="card" id="randCard" style="margin:12px 0 0;background:var(--panel2)">
+        <h2>&#127922; Randomize spawn tables</h2>
+        <div class="hint" id="habHint"></div>
+        <div class="btnrow">
+          <button id="randMapBtn" type="button" class="small">Randomize this map</button>
+          <button id="randAllBtn" type="button" class="small">Randomize ALL maps</button>
+        </div>
+        <label class="checkrow"><input id="chaosTgl" type="checkbox"><span><b>Chaos</b><br><span class="hint">ignores every rule below — anything (even legendaries) can roll anywhere</span></span></label>
+        <details class="hint"><summary>Rules (non-chaos)</summary>
+          <div style="margin-top:6px">No legendaries. Unown / Ditto / Smeargle never roll (they stay pinned in Artisan Cave). Levels on slots are kept — the slot's max level picks which BST bracket may roll.<br>
+          Surf = Water/Flying, fish = Water. Underwater uses surf rules. Caves = Rock/Ground/Steel/Fighting/Dark/Poison, plus dual Grass types, plus dual Water types on land. New Mauville (power plant) = Electric. Forests = Bug/Grass/Flying/Ghost/Psychic/Dark. Desert = cave set + Flying, no Poison/Fighting. Meteor Falls + Victory Road = Dragon, pseudo-legendaries, Fighting, Dark. Mt Pyre = Ghost/Dark/Psychic. Magma Hideout = Fire only. Shoal Cave = all Ice (surf Ice/Water or Ice/Flying, fish Ice/Water). Sky Pillar = Flying with 450+ BST. Routes grass = Fire / Normal / Psychic / Flying / Bug / Dark / Electric only (Mt Pyre + forest grass keep their own sets) — Normal and Flying roll at 3x weight. Grass tables roll max 8 unique species, the other 4 slots repeat them.<br>
+          Higher-level areas roll evolved forms of species placed on other maps once the slot's level allows it (level evolutions need their level; trade, stone, day/night and happiness evolutions need 30) — BST is ignored for those, never inside the same map.<br>
+          Randomize ALL maps then places any missing evolution families, so all 365 non-legendary species stay catchable by catch or evolution (legendaries never roll — they're the roamers).</div>
+          BST brackets by slot max level (a preference, not a cutoff — an empty bracket broadens outward; type and method rules never loosen) — 1-5: 150-200 · 4-8: 190-210 · 6-12: 190-215 · 8-14: 190-220 · 14-18: 210-230 · 18-22: 225-250 · 22-26: 245-300 · 26-30: 280-350 · 30-34: 340-410 · 34-38: 400-590 · 38+: 580-900.</div>
+        </details>
+      </div>
     </div>
     <div id="roamerPane" hidden>
       <label for="roamerSel">Roamer (<span id="roamerCount"></span>)</label>
@@ -156,6 +176,11 @@
           <div style="flex:1"><label for="globChance">ROAMER_CHANCE %</label><input id="globChance" type="number" min="0" max="100" step="1"></div>
         </div>
       </div>
+      <div class="card" style="margin:12px 0 0;background:var(--panel2)">
+        <h2>Roam areas</h2>
+        <div class="hint"><code>ROAM_MAPS</code> — shared by every roamer: tap to switch an area off/on. Only two rows show — scroll &#8597; for the rest.</div>
+        <div class="btnrow" id="areaBtns"></div>
+      </div>
     </div>
   </div>
 
@@ -163,8 +188,6 @@
     <h2>3 &middot; Pending changes <span id="chgCount" class="pill">0</span></h2>
     <div id="changesList">No changes yet.</div>
     <div class="hint">Changes apply the moment you leave a field — export always includes everything listed here. Nothing else to press.</div>
-    <div class="hint">Roam areas (<code>ROAM_MAPS</code> — shared by every roamer): tap to switch an area off/on.</div>
-    <div class="btnrow" id="areaBtns"></div>
   </div>
 
   <div class="card" id="exportCard" hidden>
@@ -194,6 +217,259 @@
 </div>
 
 <script>
+var SPDATA={"BULBASAUR":[318,"GRASS","POISON"],"IVYSAUR":[405,"GRASS","POISON"],"VENUSAUR":[525,"GRASS","POISON"],"CHARMANDER":[309,"FIRE"],"CHARMELEON":[405,"FIRE"],"CHARIZARD":[534,"FIRE","FLYING"],"SQUIRTLE":[314,"WATER"],"WARTORTLE":[405,"WATER"],"BLASTOISE":[530,"WATER"],"CATERPIE":[195,"BUG"],"METAPOD":[205,"BUG"],"BUTTERFREE":[385,"BUG","FLYING"],"WEEDLE":[195,"BUG","POISON"],"KAKUNA":[205,"BUG","POISON"],"BEEDRILL":[385,"BUG","POISON"],"PIDGEY":[251,"NORMAL","FLYING"],"PIDGEOTTO":[349,"NORMAL","FLYING"],"PIDGEOT":[469,"NORMAL","FLYING"],"RATTATA":[253,"NORMAL"],"RATICATE":[413,"NORMAL"],"SPEAROW":[262,"NORMAL","FLYING"],"FEAROW":[442,"NORMAL","FLYING"],"EKANS":[288,"POISON"],"ARBOK":[438,"POISON"],"PIKACHU":[300,"ELECTRIC"],"RAICHU":[475,"ELECTRIC"],"SANDSHREW":[300,"GROUND"],"SANDSLASH":[450,"GROUND"],"NIDORAN_F":[275,"POISON"],"NIDORINA":[365,"POISON"],"NIDOQUEEN":[495,"POISON","GROUND"],"NIDORAN_M":[273,"POISON"],"NIDORINO":[365,"POISON"],"NIDOKING":[495,"POISON","GROUND"],"CLEFAIRY":[323,"NORMAL"],"CLEFABLE":[473,"NORMAL"],"VULPIX":[299,"FIRE"],"NINETALES":[505,"FIRE"],"JIGGLYPUFF":[270,"NORMAL"],"WIGGLYTUFF":[425,"NORMAL"],"ZUBAT":[245,"POISON","FLYING"],"GOLBAT":[455,"POISON","FLYING"],"ODDISH":[320,"GRASS","POISON"],"GLOOM":[395,"GRASS","POISON"],"VILEPLUME":[480,"GRASS","POISON"],"PARAS":[285,"BUG","GRASS"],"PARASECT":[405,"BUG","GRASS"],"VENONAT":[305,"BUG","POISON"],"VENOMOTH":[450,"BUG","POISON"],"DIGLETT":[265,"GROUND"],"DUGTRIO":[405,"GROUND"],"MEOWTH":[290,"NORMAL"],"PERSIAN":[440,"NORMAL"],"PSYDUCK":[320,"WATER"],"GOLDUCK":[500,"WATER"],"MANKEY":[305,"FIGHTING"],"PRIMEAPE":[455,"FIGHTING"],"GROWLITHE":[350,"FIRE"],"ARCANINE":[555,"FIRE"],"POLIWAG":[300,"WATER"],"POLIWHIRL":[385,"WATER"],"POLIWRATH":[500,"WATER","FIGHTING"],"ABRA":[310,"PSYCHIC"],"KADABRA":[400,"PSYCHIC"],"ALAKAZAM":[490,"PSYCHIC"],"MACHOP":[305,"FIGHTING"],"MACHOKE":[405,"FIGHTING"],"MACHAMP":[505,"FIGHTING"],"BELLSPROUT":[300,"GRASS","POISON"],"WEEPINBELL":[390,"GRASS","POISON"],"VICTREEBEL":[480,"GRASS","POISON"],"TENTACOOL":[335,"WATER","POISON"],"TENTACRUEL":[515,"WATER","POISON"],"GEODUDE":[300,"ROCK","GROUND"],"GRAVELER":[390,"ROCK","GROUND"],"GOLEM":[485,"ROCK","GROUND"],"PONYTA":[410,"FIRE"],"RAPIDASH":[500,"FIRE"],"SLOWPOKE":[315,"WATER","PSYCHIC"],"SLOWBRO":[490,"WATER","PSYCHIC"],"MAGNEMITE":[325,"ELECTRIC","STEEL"],"MAGNETON":[465,"ELECTRIC","STEEL"],"FARFETCHD":[352,"NORMAL","FLYING"],"DODUO":[310,"NORMAL","FLYING"],"DODRIO":[460,"NORMAL","FLYING"],"SEEL":[325,"WATER"],"DEWGONG":[475,"WATER","ICE"],"GRIMER":[325,"POISON"],"MUK":[500,"POISON"],"SHELLDER":[305,"WATER"],"CLOYSTER":[525,"WATER","ICE"],"GASTLY":[310,"GHOST","POISON"],"HAUNTER":[405,"GHOST","POISON"],"GENGAR":[500,"GHOST","POISON"],"ONIX":[385,"ROCK","GROUND"],"DROWZEE":[328,"PSYCHIC"],"HYPNO":[483,"PSYCHIC"],"KRABBY":[325,"WATER"],"KINGLER":[475,"WATER"],"VOLTORB":[330,"ELECTRIC"],"ELECTRODE":[480,"ELECTRIC"],"EXEGGCUTE":[325,"GRASS","PSYCHIC"],"EXEGGUTOR":[520,"GRASS","PSYCHIC"],"CUBONE":[320,"GROUND"],"MAROWAK":[425,"GROUND"],"HITMONLEE":[455,"FIGHTING"],"HITMONCHAN":[455,"FIGHTING"],"LICKITUNG":[385,"NORMAL"],"KOFFING":[340,"POISON"],"WEEZING":[490,"POISON"],"RHYHORN":[345,"GROUND","ROCK"],"RHYDON":[485,"GROUND","ROCK"],"CHANSEY":[450,"NORMAL"],"TANGELA":[435,"GRASS"],"KANGASKHAN":[490,"NORMAL"],"HORSEA":[295,"WATER"],"SEADRA":[440,"WATER"],"GOLDEEN":[320,"WATER"],"SEAKING":[450,"WATER"],"STARYU":[340,"WATER"],"STARMIE":[520,"WATER","PSYCHIC"],"MR_MIME":[460,"PSYCHIC"],"SCYTHER":[500,"BUG","FLYING"],"JYNX":[455,"ICE","PSYCHIC"],"ELECTABUZZ":[490,"ELECTRIC"],"MAGMAR":[495,"FIRE"],"PINSIR":[500,"BUG"],"TAUROS":[490,"NORMAL"],"MAGIKARP":[200,"WATER"],"GYARADOS":[540,"WATER","FLYING"],"LAPRAS":[535,"WATER","ICE"],"DITTO":[288,"NORMAL"],"EEVEE":[325,"NORMAL"],"VAPOREON":[525,"WATER"],"JOLTEON":[525,"ELECTRIC"],"FLAREON":[525,"FIRE"],"PORYGON":[395,"NORMAL"],"OMANYTE":[355,"ROCK","WATER"],"OMASTAR":[495,"ROCK","WATER"],"KABUTO":[355,"ROCK","WATER"],"KABUTOPS":[495,"ROCK","WATER"],"AERODACTYL":[515,"ROCK","FLYING"],"SNORLAX":[540,"NORMAL"],"ARTICUNO":[580,"ICE","FLYING"],"ZAPDOS":[580,"ELECTRIC","FLYING"],"MOLTRES":[580,"FIRE","FLYING"],"DRATINI":[300,"DRAGON"],"DRAGONAIR":[420,"DRAGON"],"DRAGONITE":[600,"DRAGON","FLYING"],"MEWTWO":[680,"PSYCHIC"],"MEW":[600,"PSYCHIC"],"CHIKORITA":[318,"GRASS"],"BAYLEEF":[405,"GRASS"],"MEGANIUM":[525,"GRASS"],"CYNDAQUIL":[309,"FIRE"],"QUILAVA":[405,"FIRE"],"TYPHLOSION":[534,"FIRE"],"TOTODILE":[314,"WATER"],"CROCONAW":[405,"WATER"],"FERALIGATR":[530,"WATER"],"SENTRET":[215,"NORMAL"],"FURRET":[415,"NORMAL"],"HOOTHOOT":[262,"NORMAL","FLYING"],"NOCTOWL":[442,"NORMAL","FLYING"],"LEDYBA":[265,"BUG","FLYING"],"LEDIAN":[390,"BUG","FLYING"],"SPINARAK":[250,"BUG","POISON"],"ARIADOS":[390,"BUG","POISON"],"CROBAT":[535,"POISON","FLYING"],"CHINCHOU":[330,"WATER","ELECTRIC"],"LANTURN":[460,"WATER","ELECTRIC"],"PICHU":[205,"ELECTRIC"],"CLEFFA":[218,"NORMAL"],"IGGLYBUFF":[210,"NORMAL"],"TOGEPI":[245,"NORMAL"],"TOGETIC":[405,"NORMAL","FLYING"],"NATU":[320,"PSYCHIC","FLYING"],"XATU":[470,"PSYCHIC","FLYING"],"MAREEP":[280,"ELECTRIC"],"FLAAFFY":[365,"ELECTRIC"],"AMPHAROS":[500,"ELECTRIC"],"BELLOSSOM":[480,"GRASS"],"MARILL":[250,"WATER"],"AZUMARILL":[410,"WATER"],"SUDOWOODO":[410,"ROCK"],"POLITOED":[500,"WATER"],"HOPPIP":[250,"GRASS","FLYING"],"SKIPLOOM":[340,"GRASS","FLYING"],"JUMPLUFF":[450,"GRASS","FLYING"],"AIPOM":[360,"NORMAL"],"SUNKERN":[180,"GRASS"],"SUNFLORA":[425,"GRASS"],"YANMA":[390,"BUG","FLYING"],"WOOPER":[210,"WATER","GROUND"],"QUAGSIRE":[430,"WATER","GROUND"],"ESPEON":[525,"PSYCHIC"],"UMBREON":[525,"DARK"],"MURKROW":[405,"DARK","FLYING"],"SLOWKING":[490,"WATER","PSYCHIC"],"MISDREAVUS":[435,"GHOST"],"UNOWN":[336,"PSYCHIC"],"WOBBUFFET":[405,"PSYCHIC"],"GIRAFARIG":[455,"NORMAL","PSYCHIC"],"PINECO":[290,"BUG"],"FORRETRESS":[465,"BUG","STEEL"],"DUNSPARCE":[415,"NORMAL"],"GLIGAR":[430,"GROUND","FLYING"],"STEELIX":[510,"STEEL","GROUND"],"SNUBBULL":[300,"NORMAL"],"GRANBULL":[450,"NORMAL"],"QWILFISH":[430,"WATER","POISON"],"SCIZOR":[500,"BUG","STEEL"],"SHUCKLE":[505,"BUG","ROCK"],"HERACROSS":[500,"BUG","FIGHTING"],"SNEASEL":[430,"DARK","ICE"],"TEDDIURSA":[330,"NORMAL"],"URSARING":[500,"NORMAL"],"SLUGMA":[250,"FIRE"],"MAGCARGO":[410,"FIRE","ROCK"],"SWINUB":[250,"ICE","GROUND"],"PILOSWINE":[450,"ICE","GROUND"],"CORSOLA":[380,"WATER","ROCK"],"REMORAID":[300,"WATER"],"OCTILLERY":[480,"WATER"],"DELIBIRD":[330,"ICE","FLYING"],"MANTINE":[465,"WATER","FLYING"],"SKARMORY":[465,"STEEL","FLYING"],"HOUNDOUR":[330,"DARK","FIRE"],"HOUNDOOM":[500,"DARK","FIRE"],"KINGDRA":[540,"WATER","DRAGON"],"PHANPY":[330,"GROUND"],"DONPHAN":[500,"GROUND"],"PORYGON2":[515,"NORMAL"],"STANTLER":[465,"NORMAL"],"SMEARGLE":[250,"NORMAL"],"TYROGUE":[210,"FIGHTING"],"HITMONTOP":[455,"FIGHTING"],"SMOOCHUM":[305,"ICE","PSYCHIC"],"ELEKID":[360,"ELECTRIC"],"MAGBY":[365,"FIRE"],"MILTANK":[490,"NORMAL"],"BLISSEY":[540,"NORMAL"],"RAIKOU":[580,"ELECTRIC"],"ENTEI":[580,"FIRE"],"SUICUNE":[580,"WATER"],"LARVITAR":[300,"ROCK","GROUND"],"PUPITAR":[410,"ROCK","GROUND"],"TYRANITAR":[600,"ROCK","DARK"],"LUGIA":[680,"PSYCHIC","FLYING"],"HO_OH":[680,"FIRE","FLYING"],"CELEBI":[600,"PSYCHIC","GRASS"],"TREECKO":[310,"GRASS"],"GROVYLE":[405,"GRASS"],"SCEPTILE":[530,"GRASS"],"TORCHIC":[310,"FIRE"],"COMBUSKEN":[405,"FIRE","FIGHTING"],"BLAZIKEN":[530,"FIRE","FIGHTING"],"MUDKIP":[310,"WATER"],"MARSHTOMP":[405,"WATER","GROUND"],"SWAMPERT":[535,"WATER","GROUND"],"POOCHYENA":[220,"DARK"],"MIGHTYENA":[420,"DARK"],"ZIGZAGOON":[240,"NORMAL"],"LINOONE":[420,"NORMAL"],"WURMPLE":[195,"BUG"],"SILCOON":[205,"BUG"],"BEAUTIFLY":[385,"BUG","FLYING"],"CASCOON":[205,"BUG"],"DUSTOX":[385,"BUG","POISON"],"LOTAD":[220,"WATER","GRASS"],"LOMBRE":[340,"WATER","GRASS"],"LUDICOLO":[480,"WATER","GRASS"],"SEEDOT":[220,"GRASS"],"NUZLEAF":[340,"GRASS","DARK"],"SHIFTRY":[480,"GRASS","DARK"],"NINCADA":[266,"BUG","GROUND"],"NINJASK":[456,"BUG","FLYING"],"SHEDINJA":[236,"BUG","GHOST"],"TAILLOW":[270,"NORMAL","FLYING"],"SWELLOW":[430,"NORMAL","FLYING"],"SHROOMISH":[295,"GRASS"],"BRELOOM":[460,"GRASS","FIGHTING"],"SPINDA":[360,"NORMAL"],"WINGULL":[270,"WATER","FLYING"],"PELIPPER":[430,"WATER","FLYING"],"SURSKIT":[269,"BUG","WATER"],"MASQUERAIN":[414,"BUG","FLYING"],"WAILMER":[400,"WATER"],"WAILORD":[500,"WATER"],"SKITTY":[260,"NORMAL"],"DELCATTY":[380,"NORMAL"],"KECLEON":[440,"NORMAL"],"BALTOY":[300,"GROUND","PSYCHIC"],"CLAYDOL":[500,"GROUND","PSYCHIC"],"NOSEPASS":[375,"ROCK"],"TORKOAL":[470,"FIRE"],"SABLEYE":[380,"DARK","GHOST"],"BARBOACH":[288,"WATER","GROUND"],"WHISCASH":[468,"WATER","GROUND"],"LUVDISC":[330,"WATER"],"CORPHISH":[308,"WATER"],"CRAWDAUNT":[468,"WATER","DARK"],"FEEBAS":[200,"WATER"],"MILOTIC":[540,"WATER"],"CARVANHA":[305,"WATER","DARK"],"SHARPEDO":[460,"WATER","DARK"],"TRAPINCH":[290,"GROUND"],"VIBRAVA":[340,"GROUND","DRAGON"],"FLYGON":[520,"GROUND","DRAGON"],"MAKUHITA":[237,"FIGHTING"],"HARIYAMA":[474,"FIGHTING"],"ELECTRIKE":[295,"ELECTRIC"],"MANECTRIC":[475,"ELECTRIC"],"NUMEL":[305,"FIRE","GROUND"],"CAMERUPT":[460,"FIRE","GROUND"],"SPHEAL":[290,"ICE","WATER"],"SEALEO":[410,"ICE","WATER"],"WALREIN":[530,"ICE","WATER"],"CACNEA":[335,"GRASS"],"CACTURNE":[475,"GRASS","DARK"],"SNORUNT":[300,"ICE"],"GLALIE":[480,"ICE"],"LUNATONE":[440,"ROCK","PSYCHIC"],"SOLROCK":[440,"ROCK","PSYCHIC"],"AZURILL":[190,"NORMAL"],"SPOINK":[330,"PSYCHIC"],"GRUMPIG":[470,"PSYCHIC"],"PLUSLE":[405,"ELECTRIC"],"MINUN":[405,"ELECTRIC"],"MAWILE":[380,"STEEL"],"MEDITITE":[280,"FIGHTING","PSYCHIC"],"MEDICHAM":[410,"FIGHTING","PSYCHIC"],"SWABLU":[310,"NORMAL","FLYING"],"ALTARIA":[490,"DRAGON","FLYING"],"WYNAUT":[260,"PSYCHIC"],"DUSKULL":[295,"GHOST"],"DUSCLOPS":[455,"GHOST"],"ROSELIA":[400,"GRASS","POISON"],"SLAKOTH":[280,"NORMAL"],"VIGOROTH":[440,"NORMAL"],"SLAKING":[670,"NORMAL"],"GULPIN":[302,"POISON"],"SWALOT":[467,"POISON"],"TROPIUS":[460,"GRASS","FLYING"],"WHISMUR":[240,"NORMAL"],"LOUDRED":[360,"NORMAL"],"EXPLOUD":[480,"NORMAL"],"CLAMPERL":[345,"WATER"],"HUNTAIL":[485,"WATER"],"GOREBYSS":[485,"WATER"],"ABSOL":[465,"DARK"],"SHUPPET":[295,"GHOST"],"BANETTE":[455,"GHOST"],"SEVIPER":[458,"POISON"],"ZANGOOSE":[458,"NORMAL"],"RELICANTH":[485,"WATER","ROCK"],"ARON":[330,"STEEL","ROCK"],"LAIRON":[430,"STEEL","ROCK"],"AGGRON":[530,"STEEL","ROCK"],"CASTFORM":[420,"NORMAL"],"VOLBEAT":[400,"BUG"],"ILLUMISE":[400,"BUG"],"LILEEP":[355,"ROCK","GRASS"],"CRADILY":[495,"ROCK","GRASS"],"ANORITH":[355,"ROCK","BUG"],"ARMALDO":[495,"ROCK","BUG"],"RALTS":[198,"PSYCHIC"],"KIRLIA":[278,"PSYCHIC"],"GARDEVOIR":[518,"PSYCHIC"],"BAGON":[300,"DRAGON"],"SHELGON":[420,"DRAGON"],"SALAMENCE":[600,"DRAGON","FLYING"],"BELDUM":[300,"STEEL","PSYCHIC"],"METANG":[420,"STEEL","PSYCHIC"],"METAGROSS":[600,"STEEL","PSYCHIC"],"REGIROCK":[580,"ROCK"],"REGICE":[580,"ICE"],"REGISTEEL":[580,"STEEL"],"KYOGRE":[670,"WATER"],"GROUDON":[670,"GROUND"],"RAYQUAZA":[680,"DRAGON","FLYING"],"LATIAS":[600,"DRAGON","PSYCHIC"],"LATIOS":[600,"DRAGON","PSYCHIC"],"JIRACHI":[600,"STEEL","PSYCHIC"],"DEOXYS":[600,"PSYCHIC"],"CHIMECHO":[425,"PSYCHIC"]};
+</script>
+<script>
+/*__RND_CORE_START__*/
+/* Spawn-table randomizer core: pure functions, no DOM. Requires SPDATA {TOKEN:[bst,type1,type2?]}. */
+var RND_LEGENDS = {ARTICUNO:1,ZAPDOS:1,MOLTRES:1,MEWTWO:1,MEW:1,RAIKOU:1,ENTEI:1,SUICUNE:1,LUGIA:1,HO_OH:1,CELEBI:1,REGIROCK:1,REGICE:1,REGISTEEL:1,LATIAS:1,LATIOS:1,KYOGRE:1,GROUDON:1,RAYQUAZA:1,JIRACHI:1,DEOXYS:1};
+var RND_PSEUDO = {DRAGONITE:1,TYRANITAR:1,SALAMENCE:1,METAGROSS:1};
+var RND_PIN = {UNOWN:1,DITTO:1,SMEARGLE:1};
+var RND_EVO = {"IVYSAUR":[{"p":"BULBASAUR","m":"EVO_LEVEL","lv":16}],"VENUSAUR":[{"p":"IVYSAUR","m":"EVO_LEVEL","lv":32}],"CHARMELEON":[{"p":"CHARMANDER","m":"EVO_LEVEL","lv":16}],"CHARIZARD":[{"p":"CHARMELEON","m":"EVO_LEVEL","lv":36}],"WARTORTLE":[{"p":"SQUIRTLE","m":"EVO_LEVEL","lv":16}],"BLASTOISE":[{"p":"WARTORTLE","m":"EVO_LEVEL","lv":36}],"METAPOD":[{"p":"CATERPIE","m":"EVO_LEVEL","lv":7}],"BUTTERFREE":[{"p":"METAPOD","m":"EVO_LEVEL","lv":10}],"KAKUNA":[{"p":"WEEDLE","m":"EVO_LEVEL","lv":7}],"BEEDRILL":[{"p":"KAKUNA","m":"EVO_LEVEL","lv":10}],"PIDGEOTTO":[{"p":"PIDGEY","m":"EVO_LEVEL","lv":18}],"PIDGEOT":[{"p":"PIDGEOTTO","m":"EVO_LEVEL","lv":36}],"RATICATE":[{"p":"RATTATA","m":"EVO_LEVEL","lv":20}],"FEAROW":[{"p":"SPEAROW","m":"EVO_LEVEL","lv":20}],"ARBOK":[{"p":"EKANS","m":"EVO_LEVEL","lv":22}],"RAICHU":[{"p":"PIKACHU","m":"EVO_ITEM","lv":30}],"SANDSLASH":[{"p":"SANDSHREW","m":"EVO_LEVEL","lv":22}],"NIDORINA":[{"p":"NIDORAN_F","m":"EVO_LEVEL","lv":16}],"NIDOQUEEN":[{"p":"NIDORINA","m":"EVO_ITEM","lv":30}],"NIDORINO":[{"p":"NIDORAN_M","m":"EVO_LEVEL","lv":16}],"NIDOKING":[{"p":"NIDORINO","m":"EVO_ITEM","lv":30}],"CLEFABLE":[{"p":"CLEFAIRY","m":"EVO_ITEM","lv":30}],"NINETALES":[{"p":"VULPIX","m":"EVO_ITEM","lv":30}],"WIGGLYTUFF":[{"p":"JIGGLYPUFF","m":"EVO_ITEM","lv":30}],"GOLBAT":[{"p":"ZUBAT","m":"EVO_LEVEL","lv":22}],"CROBAT":[{"p":"GOLBAT","m":"EVO_FRIENDSHIP","lv":30}],"GLOOM":[{"p":"ODDISH","m":"EVO_LEVEL","lv":21}],"VILEPLUME":[{"p":"GLOOM","m":"EVO_ITEM","lv":30}],"BELLOSSOM":[{"p":"GLOOM","m":"EVO_ITEM","lv":30}],"PARASECT":[{"p":"PARAS","m":"EVO_LEVEL","lv":24}],"VENOMOTH":[{"p":"VENONAT","m":"EVO_LEVEL","lv":31}],"DUGTRIO":[{"p":"DIGLETT","m":"EVO_LEVEL","lv":26}],"PERSIAN":[{"p":"MEOWTH","m":"EVO_LEVEL","lv":28}],"GOLDUCK":[{"p":"PSYDUCK","m":"EVO_LEVEL","lv":33}],"PRIMEAPE":[{"p":"MANKEY","m":"EVO_LEVEL","lv":28}],"ARCANINE":[{"p":"GROWLITHE","m":"EVO_ITEM","lv":30}],"POLIWHIRL":[{"p":"POLIWAG","m":"EVO_LEVEL","lv":25}],"POLIWRATH":[{"p":"POLIWHIRL","m":"EVO_ITEM","lv":30}],"POLITOED":[{"p":"POLIWHIRL","m":"EVO_TRADE_ITEM","lv":30}],"KADABRA":[{"p":"ABRA","m":"EVO_LEVEL","lv":16}],"ALAKAZAM":[{"p":"KADABRA","m":"EVO_TRADE","lv":30}],"MACHOKE":[{"p":"MACHOP","m":"EVO_LEVEL","lv":28}],"MACHAMP":[{"p":"MACHOKE","m":"EVO_TRADE","lv":30}],"WEEPINBELL":[{"p":"BELLSPROUT","m":"EVO_LEVEL","lv":21}],"VICTREEBEL":[{"p":"WEEPINBELL","m":"EVO_ITEM","lv":30}],"TENTACRUEL":[{"p":"TENTACOOL","m":"EVO_LEVEL","lv":30}],"GRAVELER":[{"p":"GEODUDE","m":"EVO_LEVEL","lv":25}],"GOLEM":[{"p":"GRAVELER","m":"EVO_TRADE","lv":30}],"RAPIDASH":[{"p":"PONYTA","m":"EVO_LEVEL","lv":40}],"SLOWBRO":[{"p":"SLOWPOKE","m":"EVO_LEVEL","lv":37}],"SLOWKING":[{"p":"SLOWPOKE","m":"EVO_TRADE_ITEM","lv":30}],"MAGNETON":[{"p":"MAGNEMITE","m":"EVO_LEVEL","lv":30}],"DODRIO":[{"p":"DODUO","m":"EVO_LEVEL","lv":31}],"DEWGONG":[{"p":"SEEL","m":"EVO_LEVEL","lv":34}],"MUK":[{"p":"GRIMER","m":"EVO_LEVEL","lv":38}],"CLOYSTER":[{"p":"SHELLDER","m":"EVO_ITEM","lv":30}],"HAUNTER":[{"p":"GASTLY","m":"EVO_LEVEL","lv":25}],"GENGAR":[{"p":"HAUNTER","m":"EVO_TRADE","lv":30}],"STEELIX":[{"p":"ONIX","m":"EVO_TRADE_ITEM","lv":30}],"HYPNO":[{"p":"DROWZEE","m":"EVO_LEVEL","lv":26}],"KINGLER":[{"p":"KRABBY","m":"EVO_LEVEL","lv":28}],"ELECTRODE":[{"p":"VOLTORB","m":"EVO_LEVEL","lv":30}],"EXEGGUTOR":[{"p":"EXEGGCUTE","m":"EVO_ITEM","lv":30}],"MAROWAK":[{"p":"CUBONE","m":"EVO_LEVEL","lv":28}],"WEEZING":[{"p":"KOFFING","m":"EVO_LEVEL","lv":35}],"RHYDON":[{"p":"RHYHORN","m":"EVO_LEVEL","lv":42}],"BLISSEY":[{"p":"CHANSEY","m":"EVO_FRIENDSHIP","lv":30}],"SEADRA":[{"p":"HORSEA","m":"EVO_LEVEL","lv":32}],"KINGDRA":[{"p":"SEADRA","m":"EVO_TRADE_ITEM","lv":30}],"SEAKING":[{"p":"GOLDEEN","m":"EVO_LEVEL","lv":33}],"STARMIE":[{"p":"STARYU","m":"EVO_ITEM","lv":30}],"SCIZOR":[{"p":"SCYTHER","m":"EVO_TRADE_ITEM","lv":30}],"GYARADOS":[{"p":"MAGIKARP","m":"EVO_LEVEL","lv":20}],"JOLTEON":[{"p":"EEVEE","m":"EVO_ITEM","lv":30}],"VAPOREON":[{"p":"EEVEE","m":"EVO_ITEM","lv":30}],"FLAREON":[{"p":"EEVEE","m":"EVO_ITEM","lv":30}],"ESPEON":[{"p":"EEVEE","m":"EVO_FRIENDSHIP_DAY","lv":30}],"UMBREON":[{"p":"EEVEE","m":"EVO_FRIENDSHIP_NIGHT","lv":30}],"PORYGON2":[{"p":"PORYGON","m":"EVO_TRADE_ITEM","lv":30}],"OMASTAR":[{"p":"OMANYTE","m":"EVO_LEVEL","lv":40}],"KABUTOPS":[{"p":"KABUTO","m":"EVO_LEVEL","lv":40}],"DRAGONAIR":[{"p":"DRATINI","m":"EVO_LEVEL","lv":30}],"DRAGONITE":[{"p":"DRAGONAIR","m":"EVO_LEVEL","lv":55}],"BAYLEEF":[{"p":"CHIKORITA","m":"EVO_LEVEL","lv":16}],"MEGANIUM":[{"p":"BAYLEEF","m":"EVO_LEVEL","lv":32}],"QUILAVA":[{"p":"CYNDAQUIL","m":"EVO_LEVEL","lv":14}],"TYPHLOSION":[{"p":"QUILAVA","m":"EVO_LEVEL","lv":36}],"CROCONAW":[{"p":"TOTODILE","m":"EVO_LEVEL","lv":18}],"FERALIGATR":[{"p":"CROCONAW","m":"EVO_LEVEL","lv":30}],"FURRET":[{"p":"SENTRET","m":"EVO_LEVEL","lv":15}],"NOCTOWL":[{"p":"HOOTHOOT","m":"EVO_LEVEL","lv":20}],"LEDIAN":[{"p":"LEDYBA","m":"EVO_LEVEL","lv":18}],"ARIADOS":[{"p":"SPINARAK","m":"EVO_LEVEL","lv":22}],"LANTURN":[{"p":"CHINCHOU","m":"EVO_LEVEL","lv":27}],"PIKACHU":[{"p":"PICHU","m":"EVO_FRIENDSHIP","lv":30}],"CLEFAIRY":[{"p":"CLEFFA","m":"EVO_FRIENDSHIP","lv":30}],"JIGGLYPUFF":[{"p":"IGGLYBUFF","m":"EVO_FRIENDSHIP","lv":30}],"TOGETIC":[{"p":"TOGEPI","m":"EVO_FRIENDSHIP","lv":30}],"XATU":[{"p":"NATU","m":"EVO_LEVEL","lv":25}],"FLAAFFY":[{"p":"MAREEP","m":"EVO_LEVEL","lv":15}],"AMPHAROS":[{"p":"FLAAFFY","m":"EVO_LEVEL","lv":30}],"AZUMARILL":[{"p":"MARILL","m":"EVO_LEVEL","lv":18}],"SKIPLOOM":[{"p":"HOPPIP","m":"EVO_LEVEL","lv":18}],"JUMPLUFF":[{"p":"SKIPLOOM","m":"EVO_LEVEL","lv":27}],"SUNFLORA":[{"p":"SUNKERN","m":"EVO_ITEM","lv":30}],"QUAGSIRE":[{"p":"WOOPER","m":"EVO_LEVEL","lv":20}],"FORRETRESS":[{"p":"PINECO","m":"EVO_LEVEL","lv":31}],"GRANBULL":[{"p":"SNUBBULL","m":"EVO_LEVEL","lv":23}],"URSARING":[{"p":"TEDDIURSA","m":"EVO_LEVEL","lv":30}],"MAGCARGO":[{"p":"SLUGMA","m":"EVO_LEVEL","lv":38}],"PILOSWINE":[{"p":"SWINUB","m":"EVO_LEVEL","lv":33}],"OCTILLERY":[{"p":"REMORAID","m":"EVO_LEVEL","lv":25}],"HOUNDOOM":[{"p":"HOUNDOUR","m":"EVO_LEVEL","lv":24}],"DONPHAN":[{"p":"PHANPY","m":"EVO_LEVEL","lv":25}],"HITMONCHAN":[{"p":"TYROGUE","m":"EVO_LEVEL_ATK_LT_DEF","lv":20}],"HITMONLEE":[{"p":"TYROGUE","m":"EVO_LEVEL_ATK_GT_DEF","lv":20}],"HITMONTOP":[{"p":"TYROGUE","m":"EVO_LEVEL_ATK_EQ_DEF","lv":20}],"JYNX":[{"p":"SMOOCHUM","m":"EVO_LEVEL","lv":30}],"ELECTABUZZ":[{"p":"ELEKID","m":"EVO_LEVEL","lv":30}],"MAGMAR":[{"p":"MAGBY","m":"EVO_LEVEL","lv":30}],"PUPITAR":[{"p":"LARVITAR","m":"EVO_LEVEL","lv":30}],"TYRANITAR":[{"p":"PUPITAR","m":"EVO_LEVEL","lv":55}],"GROVYLE":[{"p":"TREECKO","m":"EVO_LEVEL","lv":16}],"SCEPTILE":[{"p":"GROVYLE","m":"EVO_LEVEL","lv":36}],"COMBUSKEN":[{"p":"TORCHIC","m":"EVO_LEVEL","lv":16}],"BLAZIKEN":[{"p":"COMBUSKEN","m":"EVO_LEVEL","lv":36}],"MARSHTOMP":[{"p":"MUDKIP","m":"EVO_LEVEL","lv":16}],"SWAMPERT":[{"p":"MARSHTOMP","m":"EVO_LEVEL","lv":36}],"MIGHTYENA":[{"p":"POOCHYENA","m":"EVO_LEVEL","lv":18}],"LINOONE":[{"p":"ZIGZAGOON","m":"EVO_LEVEL","lv":20}],"SILCOON":[{"p":"WURMPLE","m":"EVO_LEVEL_SILCOON","lv":7}],"CASCOON":[{"p":"WURMPLE","m":"EVO_LEVEL_CASCOON","lv":7}],"BEAUTIFLY":[{"p":"SILCOON","m":"EVO_LEVEL","lv":10}],"DUSTOX":[{"p":"CASCOON","m":"EVO_LEVEL","lv":10}],"LOMBRE":[{"p":"LOTAD","m":"EVO_LEVEL","lv":14}],"LUDICOLO":[{"p":"LOMBRE","m":"EVO_ITEM","lv":30}],"NUZLEAF":[{"p":"SEEDOT","m":"EVO_LEVEL","lv":14}],"SHIFTRY":[{"p":"NUZLEAF","m":"EVO_ITEM","lv":30}],"NINJASK":[{"p":"NINCADA","m":"EVO_LEVEL_NINJASK","lv":20}],"SHEDINJA":[{"p":"NINCADA","m":"EVO_LEVEL_SHEDINJA","lv":20}],"SWELLOW":[{"p":"TAILLOW","m":"EVO_LEVEL","lv":22}],"BRELOOM":[{"p":"SHROOMISH","m":"EVO_LEVEL","lv":23}],"PELIPPER":[{"p":"WINGULL","m":"EVO_LEVEL","lv":25}],"MASQUERAIN":[{"p":"SURSKIT","m":"EVO_LEVEL","lv":22}],"WAILORD":[{"p":"WAILMER","m":"EVO_LEVEL","lv":40}],"DELCATTY":[{"p":"SKITTY","m":"EVO_ITEM","lv":30}],"CLAYDOL":[{"p":"BALTOY","m":"EVO_LEVEL","lv":36}],"WHISCASH":[{"p":"BARBOACH","m":"EVO_LEVEL","lv":30}],"CRAWDAUNT":[{"p":"CORPHISH","m":"EVO_LEVEL","lv":30}],"MILOTIC":[{"p":"FEEBAS","m":"EVO_BEAUTY","lv":30}],"SHARPEDO":[{"p":"CARVANHA","m":"EVO_LEVEL","lv":30}],"VIBRAVA":[{"p":"TRAPINCH","m":"EVO_LEVEL","lv":35}],"FLYGON":[{"p":"VIBRAVA","m":"EVO_LEVEL","lv":45}],"HARIYAMA":[{"p":"MAKUHITA","m":"EVO_LEVEL","lv":24}],"MANECTRIC":[{"p":"ELECTRIKE","m":"EVO_LEVEL","lv":26}],"CAMERUPT":[{"p":"NUMEL","m":"EVO_LEVEL","lv":33}],"SEALEO":[{"p":"SPHEAL","m":"EVO_LEVEL","lv":32}],"WALREIN":[{"p":"SEALEO","m":"EVO_LEVEL","lv":44}],"CACTURNE":[{"p":"CACNEA","m":"EVO_LEVEL","lv":32}],"GLALIE":[{"p":"SNORUNT","m":"EVO_LEVEL","lv":42}],"MARILL":[{"p":"AZURILL","m":"EVO_FRIENDSHIP","lv":30}],"GRUMPIG":[{"p":"SPOINK","m":"EVO_LEVEL","lv":32}],"MEDICHAM":[{"p":"MEDITITE","m":"EVO_LEVEL","lv":37}],"ALTARIA":[{"p":"SWABLU","m":"EVO_LEVEL","lv":35}],"WOBBUFFET":[{"p":"WYNAUT","m":"EVO_LEVEL","lv":15}],"DUSCLOPS":[{"p":"DUSKULL","m":"EVO_LEVEL","lv":37}],"VIGOROTH":[{"p":"SLAKOTH","m":"EVO_LEVEL","lv":18}],"SLAKING":[{"p":"VIGOROTH","m":"EVO_LEVEL","lv":36}],"SWALOT":[{"p":"GULPIN","m":"EVO_LEVEL","lv":26}],"LOUDRED":[{"p":"WHISMUR","m":"EVO_LEVEL","lv":20}],"EXPLOUD":[{"p":"LOUDRED","m":"EVO_LEVEL","lv":40}],"HUNTAIL":[{"p":"CLAMPERL","m":"EVO_TRADE_ITEM","lv":30}],"GOREBYSS":[{"p":"CLAMPERL","m":"EVO_TRADE_ITEM","lv":30}],"BANETTE":[{"p":"SHUPPET","m":"EVO_LEVEL","lv":37}],"LAIRON":[{"p":"ARON","m":"EVO_LEVEL","lv":32}],"AGGRON":[{"p":"LAIRON","m":"EVO_LEVEL","lv":42}],"CRADILY":[{"p":"LILEEP","m":"EVO_LEVEL","lv":40}],"ARMALDO":[{"p":"ANORITH","m":"EVO_LEVEL","lv":40}],"KIRLIA":[{"p":"RALTS","m":"EVO_LEVEL","lv":20}],"GARDEVOIR":[{"p":"KIRLIA","m":"EVO_LEVEL","lv":30}],"SHELGON":[{"p":"BAGON","m":"EVO_LEVEL","lv":30}],"SALAMENCE":[{"p":"SHELGON","m":"EVO_LEVEL","lv":50}],"METANG":[{"p":"BELDUM","m":"EVO_LEVEL","lv":20}],"METAGROSS":[{"p":"METANG","m":"EVO_LEVEL","lv":45}]};
+var RND_BRACKETS = [[1,5,150,200],[4,8,190,210],[6,12,190,215],[8,14,190,220],[14,18,210,230],[18,22,225,250],[22,26,245,300],[26,30,280,350],[30,34,340,410],[34,38,400,590],[38,1000000,580,900]];
+var RND_HAB_LABEL = {routes:"Routes / outdoors",cave:"Cave",forest:"Forest",desert:"Desert",ice:"Ice cave (Shoal)",magma:"Magma Hideout",meteor:"Meteor Falls / Victory Road",pyre:"Mt Pyre",sky:"Sky Pillar",artisan:"Artisan Cave",underwater:"Underwater",power:"Power plant (New Mauville)"};
+var RND_CAVE_T = {ROCK:1,GROUND:1,STEEL:1,FIGHTING:1,DARK:1,POISON:1};
+var RND_FOREST_T = {BUG:1,GRASS:1,FLYING:1,GHOST:1,PSYCHIC:1,DARK:1};
+var RND_DESERT_T = {ROCK:1,GROUND:1,STEEL:1,DARK:1,FLYING:1};
+var RND_METEOR_T = {DRAGON:1,FIGHTING:1,DARK:1};
+var RND_PYRE_T = {GHOST:1,DARK:1,PSYCHIC:1};
+var RND_SURF_T = {WATER:1,FLYING:1};
+var RND_POWER_T = {ELECTRIC:1};
+var RND_GRASS_T = {FIRE:1,NORMAL:1,PSYCHIC:1,FLYING:1,BUG:1,DARK:1,ELECTRIC:1};
+function rndTypes(sp){ var d=(typeof SPDATA!=="undefined")?SPDATA[sp]:null; if(!d) return []; return d.length>2?[d[1],d[2]]:[d[1]]; }
+function rndBst(sp){ var d=(typeof SPDATA!=="undefined")?SPDATA[sp]:null; return d?d[0]:0; }
+function rndHasType(sp,set){ var ts=rndTypes(sp); for(var i=0;i<ts.length;i++) if(set[ts[i]]) return true; return false; }
+function rndPair(sp){ return rndTypes(sp).slice().sort().join("/"); }
+function rndHabitat(mapId){
+  var id = String(mapId||"");
+  if(id.indexOf("ARTISAN_CAVE")>=0) return "artisan";
+  if(id.indexOf("SHOAL_CAVE")>=0) return "ice";
+  if(id.indexOf("SKY_PILLAR")>=0) return "sky";
+  if(id.indexOf("MAGMA_HIDEOUT")>=0) return "magma";
+  if(id.indexOf("METEOR_FALLS")>=0||id.indexOf("VICTORY_ROAD")>=0) return "meteor";
+  if(id.indexOf("MT_PYRE")>=0) return "pyre";
+  if(id.indexOf("MIRAGE_TOWER")>=0||id.indexOf("DESERT_UNDERPASS")>=0) return "desert";
+  if(id.indexOf("PETALBURG_WOODS")>=0) return "forest";
+  if(id.indexOf("UNDERWATER")>=0) return "underwater";
+  if(id.indexOf("NEW_MAUVILLE")>=0) return "power";
+  if(/CAVE|CAVERN|TUNNEL|GRANITE/.test(id)) return "cave";
+  return "routes";
+}
+function rndBracket(level){
+  var lv=Math.max(1,Math.floor(+level||1)), i, b;
+  for(i=0;i<RND_BRACKETS.length;i++){ b=RND_BRACKETS[i]; if(lv>=b[0]&&lv<=b[1]) return {lo:b[2],hi:b[3]}; }
+  b=RND_BRACKETS[RND_BRACKETS.length-1]; return {lo:b[2],hi:b[3]};
+}
+function rndDual(sp,t){ var ts=rndTypes(sp); return ts.length>1&&(ts[0]===t||ts[1]===t); }
+function rndBstDist(sp,br){ var b=rndBst(sp); if(b<br.lo) return br.lo-b; if(b>br.hi) return b-br.hi; return 0; }
+function rndPoolHard(mapId,areaKey,chaos){ return rndPoolFor(mapId,areaKey,1,chaos,1); }
+function rndPickSoft(pool,br,rand,grassW){
+  var i, w=[], t=0;
+  for(i=0;i<pool.length;i++){ var bw=1/(1+rndBstDist(pool[i],br)/60); w[i]=(grassW?rndGrassW(pool[i]):1)*bw; t+=w[i]; }
+  var r=rand()*t;
+  for(i=0;i<pool.length;i++){ r-=w[i]; if(r<0) return pool[i]; }
+  return pool[pool.length-1];
+}
+/* Candidate pool for one slot. relax 0 = full rules, 1 = drop BST, 2 = drop type too, 3 = anything but Artisan pins. skipBst = waive BST only (evolution chaining). */
+function rndPoolFor(mapId, areaKey, maxLvl, chaos, relax, skipBst){
+  var hab=rndHabitat(mapId), out=[], i, sp, all=Object.keys(SPDATA);
+  var br=rndBracket(maxLvl);
+  for(i=0;i<all.length;i++){
+    sp=all[i];
+    if(!chaos&&relax<3&&RND_LEGENDS[sp]) continue;
+    if(!chaos&&relax<3&&RND_PIN[sp]) continue;
+    var ice=(hab==="ice"), uw=(hab==="underwater");
+    if(areaKey==="water"||(uw&&areaKey!=="fishing")){
+      if(!chaos&&relax<2){
+        if(ice){ var pr=rndPair(sp); if(pr!=="ICE/WATER"&&pr!=="FLYING/ICE") continue; }
+        else if(!rndHasType(sp,RND_SURF_T)) continue;
+      }
+    } else if(areaKey==="fishing"){
+      if(!chaos&&relax<2){
+        if(ice){ if(rndPair(sp)!=="ICE/WATER") continue; }
+        else if(!rndHasType(sp,{WATER:1})) continue;
+      }
+    } else if(!chaos&&relax<2){
+      if(hab==="artisan"){ if(!rndHasType(sp,RND_CAVE_T)) continue; }
+      else if(hab==="cave"){ if(!rndHasType(sp,RND_CAVE_T)&&!rndDual(sp,"GRASS")&&!(areaKey==="land"&&rndDual(sp,"WATER"))) continue; }
+      else if(hab==="forest"){ if(!rndHasType(sp,RND_FOREST_T)) continue; }
+      else if(hab==="desert"){ if(!rndHasType(sp,RND_DESERT_T)) continue; }
+      else if(hab==="ice"){ if(!rndHasType(sp,{ICE:1})) continue; }
+      else if(hab==="magma"){ if(!rndHasType(sp,{FIRE:1})) continue; }
+      else if(hab==="meteor"){ if(!rndHasType(sp,RND_METEOR_T)&&!RND_PSEUDO[sp]) continue; }
+      else if(hab==="pyre"){ if(!rndHasType(sp,RND_PYRE_T)) continue; }
+      else if(hab==="sky"){ if(!rndHasType(sp,{FLYING:1})||rndBst(sp)<450) continue; }
+      else if(hab==="power"){ if(!rndHasType(sp,RND_POWER_T)) continue; }
+      else if(hab==="underwater"){ if(!rndHasType(sp,RND_SURF_T)) continue; }
+      else if(areaKey==="land"){ if(!rndHasType(sp,RND_GRASS_T)) continue; }
+      /* forest/pyre land keep their themed sets above; non-land routes areas: no type filter */
+    }
+    if(!chaos&&relax<1&&!skipBst){
+      var bst=rndBst(sp);
+      if(bst<br.lo||bst>br.hi) continue;
+    }
+    out.push(sp);
+  }
+  return out;
+}
+function rndPick(pool,rand){ return pool[Math.floor(rand()*pool.length)]; }
+/* Grass weight: Normal/Flying roll 3x. Either type qualifies (Pidgey counts). */
+function rndGrassW(sp){ var ts=rndTypes(sp); for(var i=0;i<ts.length;i++){ if(ts[i]==="NORMAL"||ts[i]==="FLYING") return 3; } return 1; }
+function rndPickW(pool,rand){ var t=0,i; for(i=0;i<pool.length;i++) t+=rndGrassW(pool[i]); var r=rand()*t; for(i=0;i<pool.length;i++){ r-=rndGrassW(pool[i]); if(r<0) return pool[i]; } return pool[pool.length-1]; }
+/* Reverse evolution index: parent -> [children]. */
+var RND_EVO_KIDS={};
+(function(){ for(var c in RND_EVO){ var L=RND_EVO[c]; for(var i=0;i<L.length;i++){ var p=L[i].p; if(!RND_EVO_KIDS[p]) RND_EVO_KIDS[p]=[]; if(RND_EVO_KIDS[p].indexOf(c)<0) RND_EVO_KIDS[p].push(c); } } })();
+/* Level at which child may evolve from parent: its level-based threshold, or 30 for trade/stone/day/night/happiness/beauty. Null if unrelated. */
+function rndEvoThreshold(child, parent){
+  var L=RND_EVO[child];
+  if(!L) return null;
+  for(var i=0;i<L.length;i++) if(L[i].p===parent) return L[i].lv;
+  return null;
+}
+/* Evolved candidates for one slot: direct children of species placed in OTHER
+   maps, whose evo level the slot's max allows. BST waived (level-gated
+   instead); type rules still apply. Never fires inside the same map. */
+function rndEvoBonus(mapId, areaKey, mx, placedElsewhere){
+  var out=[], seen={};
+  if(!placedElsewhere) return out;
+  var pool=rndPoolFor(mapId,areaKey,mx,false,0,true), set={}, i;
+  for(i=0;i<pool.length;i++) set[pool[i]]=1;
+  for(var pi in placedElsewhere){
+    var kids=RND_EVO_KIDS[pi];
+    if(!kids) continue;
+    for(var ci=0;ci<kids.length;ci++){
+      var cand=kids[ci];
+      if(seen[cand]||!set[cand]) continue;
+      var th=rndEvoThreshold(cand,pi);
+      if(th==null||mx<th) continue;
+      seen[cand]=1; out.push(cand);
+    }
+  }
+  return out;
+}
+/* slots: [{species,min,max}], maxes: effective max level per slot (or null). evoCtx: {placedElsewhere:{TOKEN:1}} for evolution chaining (optional). Returns {species:[...], relaxed:n}. */
+function rndRollArea(mapId, areaKey, slots, maxes, chaos, rand, evoCtx){
+  rand=rand||Math.random;
+  var out=[], i, relaxed=0, diag=[];
+  if(chaos){ var all=Object.keys(SPDATA); for(i=0;i<slots.length;i++){ out[i]=rndPick(all,rand); diag.push({slot:i,areaKey:areaKey,max:(maxes&&maxes[i]!=null)?maxes[i]:slots[i].max,habitat:rndHabitat(mapId),stage:-2,species:out[i]}); } return {species:out,relaxed:0,diag:diag}; }
+  var hab=rndHabitat(mapId);
+  var uniqueCap=(areaKey==="land")?8:1000000;
+  var grassW=(areaKey==="land"&&hab==="routes"&&!chaos);
+  var evoElse=(evoCtx&&evoCtx.placedElsewhere)||null;
+  var used={}, usedList=[], uniqueCount=0;
+  for(i=0;i<slots.length;i++){
+    var s=slots[i], mx=(maxes&&maxes[i]!=null)?maxes[i]:s.max;
+    if(hab==="artisan"&&RND_PIN[s.species]){ out[i]=s.species; diag.push({slot:i,areaKey:areaKey,max:mx,habitat:hab,bracket:null,hardCount:0,prefCount:0,stage:-1,species:out[i]}); continue; }
+    var br=rndBracket(mx);
+    var hard=rndPoolHard(mapId,areaKey,false), stage=0, cands=[], soft=false;
+    var pref=hard.filter(function(x){ return rndBstDist(x,br)===0; });
+    if(pref.length){ cands=pref; }
+    else if(hard.length){
+      var lo=br.lo, hi=br.hi, span=(hi-lo)||50, st=0;
+      while(st<3){
+        st++; lo-=Math.ceil(span*0.4*st); hi+=Math.ceil(span*0.4*st);
+        var win=hard.filter(function(x){ var b=rndBst(x); return b>=lo&&b<=hi; });
+        if(win.length){ cands=win; stage=st; soft=true; break; }
+      }
+      if(!cands.length){ cands=hard; stage=4; soft=true; }
+    }
+    if(!cands.length){
+      var pool=rndPoolFor(mapId,areaKey,mx,false,2), rl=1;
+      if(!pool.length){ pool=rndPoolFor(mapId,areaKey,mx,false,3); }
+      if(!pool.length){ out[i]=s.species; relaxed++; diag.push({slot:i,areaKey:areaKey,max:mx,habitat:hab,bracket:br,hardCount:0,prefCount:0,stage:9,species:out[i]}); continue; }
+      cands=pool; stage=9;
+    }
+    relaxed+=(stage>0?1:0);
+    if(evoElse){
+      var bonus=rndEvoBonus(mapId,areaKey,mx,evoElse), bi;
+      for(bi=0;bi<bonus.length;bi++){ cands.push(bonus[bi],bonus[bi],bonus[bi]); }
+    }
+    var pick, isRep=false;
+    if(uniqueCount<uniqueCap){
+      var fresh=cands.filter(function(x){return !used[x];});
+      var src=fresh.length?fresh:cands;
+      if(soft) pick=rndPickSoft(src,br,rand,grassW);
+      else pick=grassW?rndPickW(src,rand):rndPick(src,rand);
+      if(!used[pick]){ used[pick]=1; usedList.push(pick); uniqueCount++; }
+    } else {
+      var repList=usedList.filter(function(x){ return rndBstDist(x,br)===0; });
+      if(repList.length){ pick=grassW?rndPickW(repList,rand):rndPick(repList,rand); isRep=true; }
+      else {
+        var fresh2=cands.filter(function(x){return !used[x];});
+        var src2=fresh2.length?fresh2:cands;
+        if(soft) pick=rndPickSoft(src2,br,rand,grassW);
+        else pick=grassW?rndPickW(src2,rand):rndPick(src2,rand);
+        if(!used[pick]){ used[pick]=1; usedList.push(pick); uniqueCount++; }
+      }
+    }
+    out[i]=pick;
+    diag.push({slot:i,areaKey:areaKey,max:mx,habitat:hab,bracket:br,hardCount:hard.length,prefCount:pref.length,stage:stage,rep:isRep,species:pick});
+  }
+  return {species:out,relaxed:relaxed,diag:diag};
+}
+
+function rndAncestors(sp){ var out={}, stack=[sp]; while(stack.length){ var c=stack.pop(); if(out[c]) continue; out[c]=1; var ps=RND_EVO[c]; if(ps) for(var i=0;i<ps.length;i++) stack.push(ps[i].p); } return out; }
+function rndFamRoot(sp){ var c=sp, seen={}; while(RND_EVO[c]&&RND_EVO[c].length&&!seen[c]){ seen[c]=1; c=RND_EVO[c][0].p; } return c; }
+/* placed: array of species tokens. Legends excluded (roamers, never rolled). */
+function rndCoverage(placed){
+  var has={}, i, sp, k;
+  for(i=0;i<placed.length;i++) has[placed[i]]=1;
+  var all=Object.keys(SPDATA), total=0, uncovered=[];
+  for(i=0;i<all.length;i++){
+    sp=all[i];
+    if(RND_LEGENDS[sp]) continue;
+    total++;
+    var anc=rndAncestors(sp), ok=false;
+    for(k in anc) if(has[k]){ ok=true; break; }
+    if(!ok) uncovered.push(sp);
+  }
+  return {total:total, uncovered:uncovered};
+}
+/* slots: [{mapId,areaKey,max,pinned,cur}]. placed: {TOKEN:1}, gains repaired roots.
+   taken: persistent slot reservations across passes (pass the same object).
+   counts: {TOKEN:n} current copies per species — slots whose cur has a spare
+   copy are preferred, since overwriting them can't break another family. */
+function rndCoveragePlan(slots, placed, chaos, taken, counts){
+  var rep=rndCoverage(Object.keys(placed)), seen={}, roots=[], i, rx, si, oi;
+  for(i=0;i<rep.uncovered.length;i++){ var r=rndFamRoot(rep.uncovered[i]); if(!seen[r]){ seen[r]=1; roots.push(r); } }
+  taken=taken||{};
+  counts=counts||{};
+  var cache={}, plan=[], forced=0, failed=0;
+  function poolHas(si, rx, sp){
+    var k=si+":"+rx, set=cache[k], s, p, j;
+    if(!set){
+      set={}; s=slots[si];
+      if(chaos){ var all=Object.keys(SPDATA); for(j=0;j<all.length;j++) set[all[j]]=1; }
+      else { p=rndPoolFor(s.mapId,s.areaKey,s.max,false,rx); for(j=0;j<p.length;j++) set[p[j]]=1; }
+      cache[k]=set;
+    }
+    return !!set[sp];
+  }
+  function dupRank(si){ return (counts[slots[si].cur]||0)>=2 ? 0 : 1; }
+  function bstGap(root,si){ return rndBstDist(root,rndBracket(slots[si].max)); }
+  function placeAt(si,root,rx){ plan.push({slot:si,species:root,relax:rx}); taken[si]=1; placed[root]=1; }
+  function tryPlace(root){
+    var hard=[], soft=[], si;
+    for(si=0;si<slots.length;si++){
+      if(taken[si]||slots[si].pinned) continue;
+      if(poolHas(si,0,root)) hard.push(si);
+      else if(poolHas(si,1,root)) soft.push(si);
+    }
+    hard.sort(function(a,b){ return dupRank(a)-dupRank(b) || a-b; });
+    if(hard.length){ placeAt(hard[0],root,0); return true; }
+    soft.sort(function(a,b){ return bstGap(root,a)-bstGap(root,b) || dupRank(a)-dupRank(b) || a-b; });
+    if(soft.length){ placeAt(soft[0],root,1); return true; }
+    return false;
+  }
+  for(i=0;i<roots.length;i++){
+    if(tryPlace(roots[i])) continue;
+    failed++;
+  }
+  return {plan:plan, total:rep.total, repaired:roots.length, forced:forced, failed:failed};
+}
+/*__RND_CORE_END__*/
+</script>
+<script>
 "use strict";
 /* Species list (from pokeemerald constants/species.h; EGG excluded). */
 var SPECIES = ["BULBASAUR","IVYSAUR","VENUSAUR","CHARMANDER","CHARMELEON","CHARIZARD","SQUIRTLE","WARTORTLE","BLASTOISE","CATERPIE","METAPOD","BUTTERFREE","WEEDLE","KAKUNA","BEEDRILL","PIDGEY","PIDGEOTTO","PIDGEOT","RATTATA","RATICATE","SPEAROW","FEAROW","EKANS","ARBOK","PIKACHU","RAICHU","SANDSHREW","SANDSLASH","NIDORAN_F","NIDORINA","NIDOQUEEN","NIDORAN_M","NIDORINO","NIDOKING","CLEFAIRY","CLEFABLE","VULPIX","NINETALES","JIGGLYPUFF","WIGGLYTUFF","ZUBAT","GOLBAT","ODDISH","GLOOM","VILEPLUME","PARAS","PARASECT","VENONAT","VENOMOTH","DIGLETT","DUGTRIO","MEOWTH","PERSIAN","PSYDUCK","GOLDUCK","MANKEY","PRIMEAPE","GROWLITHE","ARCANINE","POLIWAG","POLIWHIRL","POLIWRATH","ABRA","KADABRA","ALAKAZAM","MACHOP","MACHOKE","MACHAMP","BELLSPROUT","WEEPINBELL","VICTREEBEL","TENTACOOL","TENTACRUEL","GEODUDE","GRAVELER","GOLEM","PONYTA","RAPIDASH","SLOWPOKE","SLOWBRO","MAGNEMITE","MAGNETON","FARFETCHD","DODUO","DODRIO","SEEL","DEWGONG","GRIMER","MUK","SHELLDER","CLOYSTER","GASTLY","HAUNTER","GENGAR","ONIX","DROWZEE","HYPNO","KRABBY","KINGLER","VOLTORB","ELECTRODE","EXEGGCUTE","EXEGGUTOR","CUBONE","MAROWAK","HITMONLEE","HITMONCHAN","LICKITUNG","KOFFING","WEEZING","RHYHORN","RHYDON","CHANSEY","TANGELA","KANGASKHAN","HORSEA","SEADRA","GOLDEEN","SEAKING","STARYU","STARMIE","MR_MIME","SCYTHER","JYNX","ELECTABUZZ","MAGMAR","PINSIR","TAUROS","MAGIKARP","GYARADOS","LAPRAS","DITTO","EEVEE","VAPOREON","JOLTEON","FLAREON","PORYGON","OMANYTE","OMASTAR","KABUTO","KABUTOPS","AERODACTYL","SNORLAX","ARTICUNO","ZAPDOS","MOLTRES","DRATINI","DRAGONAIR","DRAGONITE","MEWTWO","MEW","CHIKORITA","BAYLEEF","MEGANIUM","CYNDAQUIL","QUILAVA","TYPHLOSION","TOTODILE","CROCONAW","FERALIGATR","SENTRET","FURRET","HOOTHOOT","NOCTOWL","LEDYBA","LEDIAN","SPINARAK","ARIADOS","CROBAT","CHINCHOU","LANTURN","PICHU","CLEFFA","IGGLYBUFF","TOGEPI","TOGETIC","NATU","XATU","MAREEP","FLAAFFY","AMPHAROS","BELLOSSOM","MARILL","AZUMARILL","SUDOWOODO","POLITOED","HOPPIP","SKIPLOOM","JUMPLUFF","AIPOM","SUNKERN","SUNFLORA","YANMA","WOOPER","QUAGSIRE","ESPEON","UMBREON","MURKROW","SLOWKING","MISDREAVUS","UNOWN","WOBBUFFET","GIRAFARIG","PINECO","FORRETRESS","DUNSPARCE","GLIGAR","STEELIX","SNUBBULL","GRANBULL","QWILFISH","SCIZOR","SHUCKLE","HERACROSS","SNEASEL","TEDDIURSA","URSARING","SLUGMA","MAGCARGO","SWINUB","PILOSWINE","CORSOLA","REMORAID","OCTILLERY","DELIBIRD","MANTINE","SKARMORY","HOUNDOUR","HOUNDOOM","KINGDRA","PHANPY","DONPHAN","PORYGON2","STANTLER","SMEARGLE","TYROGUE","HITMONTOP","SMOOCHUM","ELEKID","MAGBY","MILTANK","BLISSEY","RAIKOU","ENTEI","SUICUNE","LARVITAR","PUPITAR","TYRANITAR","LUGIA","HO_OH","CELEBI","TREECKO","GROVYLE","SCEPTILE","TORCHIC","COMBUSKEN","BLAZIKEN","MUDKIP","MARSHTOMP","SWAMPERT","POOCHYENA","MIGHTYENA","ZIGZAGOON","LINOONE","WURMPLE","SILCOON","BEAUTIFLY","CASCOON","DUSTOX","LOTAD","LOMBRE","LUDICOLO","SEEDOT","NUZLEAF","SHIFTRY","NINCADA","NINJASK","SHEDINJA","TAILLOW","SWELLOW","SHROOMISH","BRELOOM","SPINDA","WINGULL","PELIPPER","SURSKIT","MASQUERAIN","WAILMER","WAILORD","SKITTY","DELCATTY","KECLEON","BALTOY","CLAYDOL","NOSEPASS","TORKOAL","SABLEYE","BARBOACH","WHISCASH","LUVDISC","CORPHISH","CRAWDAUNT","FEEBAS","MILOTIC","CARVANHA","SHARPEDO","TRAPINCH","VIBRAVA","FLYGON","MAKUHITA","HARIYAMA","ELECTRIKE","MANECTRIC","NUMEL","CAMERUPT","SPHEAL","SEALEO","WALREIN","CACNEA","CACTURNE","SNORUNT","GLALIE","LUNATONE","SOLROCK","AZURILL","SPOINK","GRUMPIG","PLUSLE","MINUN","MAWILE","MEDITITE","MEDICHAM","SWABLU","ALTARIA","WYNAUT","DUSKULL","DUSCLOPS","ROSELIA","SLAKOTH","VIGOROTH","SLAKING","GULPIN","SWALOT","TROPIUS","WHISMUR","LOUDRED","EXPLOUD","CLAMPERL","HUNTAIL","GOREBYSS","ABSOL","SHUPPET","BANETTE","SEVIPER","ZANGOOSE","RELICANTH","ARON","LAIRON","AGGRON","CASTFORM","VOLBEAT","ILLUMISE","LILEEP","CRADILY","ANORITH","ARMALDO","RALTS","KIRLIA","GARDEVOIR","BAGON","SHELGON","SALAMENCE","BELDUM","METANG","METAGROSS","REGIROCK","REGICE","REGISTEEL","KYOGRE","GROUDON","RAYQUAZA","LATIAS","LATIOS","JIRACHI","DEOXYS","CHIMECHO"];
@@ -216,6 +492,7 @@ var globLevel = null, globChance = null;   /* parsed global defaults + token spa
 var parseWarnings = [];
 var autoToggles = false; /* latest catch structure: mod.options toggles auto-built from ROAMER_ROWS */
 var edits = {};
+var bulkSilent = false; /* true during ALL-maps randomize: skip per-edit list repaints */
 var liveInputs = []; /* commit() of every number field on screen */
 function harvestInputs(){
   /* Re-run each visible field's own commit so in-progress typing is applied.
@@ -400,6 +677,7 @@ function setEdit(key, label, span, text){
 }
 function delEdit(key){ if (edits[key]){ delete edits[key]; renderChanges(); } }
 function renderChanges(){
+  if (bulkSilent) return;
   var ks = Object.keys(edits);
   $("chgCount").textContent = ks.length;
   $("changesList").textContent = ks.length ? ks.map(function(k){return "• "+edits[k].label;}).join("\n") : "No changes yet.";
@@ -506,6 +784,9 @@ function renderRoute(){
   var box = $("routeBody"); box.innerHTML = "";
   var r = routes[curRoute];
   if (!r){ box.innerHTML = '<p class="hint">No routes loaded.</p>'; return; }
+  $("habHint").textContent = "This map: " + prettyRoute(r.id) + " · habitat: " + rndHabitat(r.id) +
+    " (" + RND_HAB_LABEL[rndHabitat(r.id)] + ") · " +
+    r.areas.map(function(a){ return (AREA_LABEL[a.key]||a.key) + "×" + a.slots.length; }).join("  ");
   r.areas.forEach(function(a,ai){
     var div = document.createElement("div"); div.className = "area";
     var h = document.createElement("h3");
@@ -1033,6 +1314,157 @@ $("copyBtn").onclick = function(){
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(out).then(done, legacy);
   else legacy();
 };
+/* ---------- spawn randomizer (species only; levels/rates untouched) ---------- */
+function effSlotMax(r, ai, si){
+  var sl = r.areas[ai].slots[si], k = "mx:"+r.id+":"+ai+":"+si;
+  return edits[k] ? (+edits[k].text || sl.max) : sl.max;
+}
+/* Species currently placed on every map except one (edits-aware): feeds
+   evolution chaining, which only fires between different maps. */
+function placedElsewhereFor(mapId){
+  var out={}, ri, ai, si, k, sl, r, a;
+  for (ri=0; ri<routes.length; ri++){ r=routes[ri]; if(r.id===mapId) continue;
+    for (ai=0; ai<r.areas.length; ai++){ a=r.areas[ai];
+      for (si=0; si<a.slots.length; si++){ sl=a.slots[si]; k="sp:"+r.id+":"+ai+":"+si;
+        out[edits[k]?edits[k].text:sl.species]=1;
+      }
+    }
+  }
+  return out;
+}
+function randomizeMap(ri, chaos, skipRender){
+  var r = routes[ri];
+  if (!r) return {rolled:0, slots:0, relaxed:0};
+  harvestInputs();
+  var evoElse = placedElsewhereFor(r.id);
+  var rolled = 0, slots = 0, relaxed = 0;
+  lastRoll = {mapId:r.id, areas:[]};
+  r.areas.forEach(function(a, ai){
+    var shown = a.slots.map(function(sl, si){
+      var k = "sp:"+r.id+":"+ai+":"+si;
+      return {species: edits[k] ? edits[k].text : sl.species, min: sl.min, max: sl.max};
+    });
+    var maxes = a.slots.map(function(sl, si){ return effSlotMax(r, ai, si); });
+    var res = rndRollArea(r.id, a.key, shown, maxes, chaos, Math.random, {placedElsewhere: evoElse});
+    relaxed += res.relaxed;
+    lastRoll.areas.push({areaKey:a.key, diag:res.diag||[]});
+    res.species.forEach(function(ns, si){
+      var sl = a.slots[si], sk = "sp:"+r.id+":"+ai+":"+si;
+      slots++;
+      if (ns !== shown[si].species){
+        rolled++;
+        var dg = res.diag && res.diag[si];
+        var tag = (dg && dg.stage>0) ? " (randomized, BST-broadened)" : " (randomized)";
+        if (ns === sl.species) delEdit(sk);
+        else setEdit(sk, prettyRoute(r.id)+" #"+(si+1)+" "+shown[si].species+" → "+ns+tag, sl.sp, ns);
+      }
+    });
+  });
+  if (!skipRender) renderRoute();
+  return {rolled:rolled, slots:slots, relaxed:relaxed};
+}
+var lastCoverage = null;
+var lastRoll = null;
+function currentPlacedState(){
+  var has={}, counts={}, ri, ai, si, k, sl, r, a, cur;
+  for (ri=0; ri<routes.length; ri++){ r=routes[ri];
+    for (ai=0; ai<r.areas.length; ai++){ a=r.areas[ai];
+      for (si=0; si<a.slots.length; si++){ sl=a.slots[si]; k="sp:"+r.id+":"+ai+":"+si;
+        cur=edits[k]?edits[k].text:sl.species;
+        has[cur]=1; counts[cur]=(counts[cur]||0)+1;
+      }
+    }
+  }
+  return {has:has, counts:counts};
+}
+function currentPlacedSpecies(){ return currentPlacedState().has; }
+/* Dex-coverage pass: every non-legendary species must be placed or evolve from
+   something placed. Missing family roots are written into fitting slots via
+   the normal pending-edit pipeline. A placement can displace another family's
+   sole copy, so passes repeat until a fresh recount is clean (or stalls). */
+function ensureDexCoverage(chaos){
+  var taken={}, totalApplied=0, totalForced=0, totalFailed=0, totalRepaired=0, guard=0, rep, covApplied=[];
+  while (guard++ < 8){
+    var slots=[], ri, ai, si, k, sl, r, a;
+    for (ri=0; ri<routes.length; ri++){ r=routes[ri];
+      for (ai=0; ai<r.areas.length; ai++){ a=r.areas[ai];
+        for (si=0; si<a.slots.length; si++){ sl=a.slots[si]; k="sp:"+r.id+":"+ai+":"+si;
+          var cur=edits[k]?edits[k].text:sl.species;
+          slots.push({mapId:r.id, areaKey:a.key, max:effSlotMax(r,ai,si),
+            pinned:(rndHabitat(r.id)==="artisan"&&!!RND_PIN[cur]), cur:cur,
+            ri:ri, ai:ai, si:si, key:k, label:prettyRoute(r.id)+" #"+(si+1)});
+        }
+      }
+    }
+    var st=currentPlacedState();
+    rep=rndCoverage(Object.keys(st.has));
+    if (!rep.uncovered.length) break;
+    var res=rndCoveragePlan(slots, st.has, chaos, taken, st.counts);
+    totalRepaired+=res.repaired; totalForced+=res.forced; totalFailed+=res.failed;
+    var applied=0;
+    res.plan.forEach(function(p){
+      if (p.slot<0) return;
+      var s=slots[p.slot], S=routes[s.ri].areas[s.ai].slots[s.si];
+      var cur2=edits[s.key]?edits[s.key].text:S.species;
+      if (cur2===p.species) return;
+      setEdit(s.key, s.label+" "+cur2+" → "+p.species+" (dex coverage: keeps every species catchable by catch or evolution"+(p.relax>0?", BST-loosened":"")+")", S.sp, p.species);
+      covApplied.push({label:s.label, from:cur2, to:p.species, relax:p.relax});
+      applied++;
+    });
+    totalApplied+=applied;
+    if (!applied) break;
+  }
+  var fin=currentPlacedState();
+  var frep=rndCoverage(Object.keys(fin.has));
+  lastCoverage={total:frep.total, uncovered:frep.uncovered, repaired:totalRepaired, applied:totalApplied, forced:totalForced, failed:totalFailed, placements:covApplied};
+  return lastCoverage;
+}
+$("randMapBtn").onclick = function(){
+  if (curRoute < 0 || !routes[curRoute]){ status("Load a file and pick a map first.", true); return; }
+  var chaos = $("chaosTgl").checked;
+  var before = rndCoverage(Object.keys(currentPlacedSpecies())).uncovered.length;
+  var st = randomizeMap(curRoute, chaos, false);
+  var after = rndCoverage(Object.keys(currentPlacedSpecies())).uncovered.length;
+  var warn = (after > before) ? (" ⚠ " + (after-before) + " species left uncatchable by this map — run ALL maps to restore full coverage.") : "";
+  status("🎲 " + prettyRoute(routes[curRoute].id) + (chaos ? " [CHAOS]" : "") + ": " +
+    st.rolled + "/" + st.slots + " slots rerolled" +
+    (st.relaxed ? " (" + st.relaxed + " loosened rules)" : "") + warn +
+    ". Review in Pending changes, then export.", false, true);
+};
+var randAllArmed = false, randAllTimer = 0;
+$("randAllBtn").onclick = function(){
+  if (!routes.length){ status("Load a file first.", true); return; }
+  if (!randAllArmed){
+    randAllArmed = true;
+    $("randAllBtn").textContent = "Tap again to randomize all " + routes.length + " maps?";
+    clearTimeout(randAllTimer);
+    randAllTimer = setTimeout(function(){
+      randAllArmed = false;
+      var b = $("randAllBtn"); if (b) b.textContent = "Randomize ALL maps";
+    }, 4000);
+    return;
+  }
+  clearTimeout(randAllTimer); randAllArmed = false;
+  $("randAllBtn").textContent = "Randomize ALL maps";
+  var chaos = $("chaosTgl").checked;
+  var rolled = 0, slots = 0, relaxed = 0;
+  bulkSilent = true;
+  for (var i = 0; i < routes.length; i++){
+    var st = randomizeMap(i, chaos, true);
+    rolled += st.rolled; slots += st.slots; relaxed += st.relaxed;
+  }
+  bulkSilent = false;
+  renderRoute();
+  var cov = ensureDexCoverage(chaos);
+  var covMsg = " Full dex: " + (cov.total - cov.uncovered.length) + "/" + cov.total +
+    " catchable by catch or evolution (" + cov.applied + " coverage placements" +
+    (cov.forced ? ", " + cov.forced + " forced off-rules" : "") +
+    (cov.failed ? ", " + cov.failed + " families unplaceable" : "") + ").";
+  status("🎲 ALL maps" + (chaos ? " [CHAOS]" : "") + ": " + rolled + "/" + slots +
+    " slots rerolled across " + routes.length + " maps" +
+    (relaxed ? " (" + relaxed + " loosened)" : "") + "." + covMsg +
+    " Review in Pending changes, then export.", false, true);
+};
 /* expose for automated tests */
 window.__editor = {loadText:loadText, buildOutput:buildOutput, validate:validate,
   testEdit:function(k,l,s,t){setEdit(k,l,s,t);},
@@ -1042,7 +1474,14 @@ window.__editor = {loadText:loadText, buildOutput:buildOutput, validate:validate
   getGlobals:function(){return {level:globLevel, chance:globChance};},
   hasAutoToggles:function(){return autoToggles;},
   lastOutput:function(){return lastOutput;},
-  harvest:harvestInputs};
+  harvest:harvestInputs,
+  lastRoll:function(){ return lastRoll; },
+  rnd:{habitat:rndHabitat, bracket:rndBracket, pool:rndPoolFor, poolHard:rndPoolHard, bstDist:rndBstDist, pickSoft:rndPickSoft, roll:rndRollArea,
+    legends:RND_LEGENDS, pseudo:RND_PSEUDO, pins:RND_PIN, habLabel:RND_HAB_LABEL,
+    evo:RND_EVO, ancestors:rndAncestors, famRoot:rndFamRoot,
+    coverage:rndCoverage, coveragePlan:rndCoveragePlan, evoThreshold:rndEvoThreshold, evoBonus:rndEvoBonus},
+  lastCoverage:function(){ return lastCoverage; },
+  randomizeMap:function(ri, chaos){ return randomizeMap(ri, !!chaos, false); }};
 </script>
 </body>
 </html>
